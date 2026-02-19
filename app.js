@@ -16,6 +16,15 @@
     let currentlyPlayingId = null;
     let currentAudio = null;
 
+    // Speech recognition
+    let speechRecognition = null;
+    let currentTranscription = '';
+    let interimTranscription = '';
+
+    // Chat
+    let chatMessages = [];
+    let isAiResponding = false;
+
     // ---- DOM Elements ----
     const btnRecord = document.getElementById('btnRecord');
     const recordingTime = document.getElementById('recordingTime');
@@ -23,17 +32,37 @@
     const recorderCard = document.querySelector('.recorder-card');
     const visualizer = document.getElementById('visualizer');
     const canvasCtx = visualizer.getContext('2d');
+    const transcriptionLive = document.getElementById('transcriptionLive');
 
     const saveModal = document.getElementById('saveModal');
     const previewAudio = document.getElementById('previewAudio');
     const noteTitle = document.getElementById('noteTitle');
     const btnDiscard = document.getElementById('btnDiscard');
     const btnSave = document.getElementById('btnSave');
+    const transcriptionText = document.getElementById('transcriptionText');
+
+    const settingsModal = document.getElementById('settingsModal');
+    const apiUrlInput = document.getElementById('apiUrl');
+    const apiKeyInput = document.getElementById('apiKey');
+    const apiModelInput = document.getElementById('apiModel');
+    const btnSettingsCancel = document.getElementById('btnSettingsCancel');
+    const btnSettingsSave = document.getElementById('btnSettingsSave');
 
     const notesList = document.getElementById('notesList');
     const emptyState = document.getElementById('emptyState');
     const notesCount = document.getElementById('notesCount');
     const searchInput = document.getElementById('searchInput');
+
+    const btnAiToggle = document.getElementById('btnAiToggle');
+    const chatPanel = document.getElementById('chatPanel');
+    const chatOverlay = document.getElementById('chatOverlay');
+    const chatMessagesEl = document.getElementById('chatMessages');
+    const chatInput = document.getElementById('chatInput');
+    const chatStatus = document.getElementById('chatStatus');
+    const btnSend = document.getElementById('btnSend');
+    const btnChatClose = document.getElementById('btnChatClose');
+    const btnChatSettings = document.getElementById('btnChatSettings');
+    const btnChatClear = document.getElementById('btnChatClear');
 
     // ---- Storage ----
     function getNotes() {
@@ -57,6 +86,32 @@
     function deleteNote(id) {
         const notes = getNotes().filter(n => n.id !== id);
         saveNotes(notes);
+    }
+
+    // AI Settings
+    function getAiSettings() {
+        try {
+            return JSON.parse(localStorage.getItem('voicenotes_ai') || '{}');
+        } catch {
+            return {};
+        }
+    }
+
+    function saveAiSettings(settings) {
+        localStorage.setItem('voicenotes_ai', JSON.stringify(settings));
+    }
+
+    // Chat history
+    function getChatHistory() {
+        try {
+            return JSON.parse(localStorage.getItem('voicenotes_chat') || '[]');
+        } catch {
+            return [];
+        }
+    }
+
+    function saveChatHistory(messages) {
+        localStorage.setItem('voicenotes_chat', JSON.stringify(messages));
     }
 
     // ---- Utilities ----
@@ -88,6 +143,104 @@
             month: 'short',
             year: date.getFullYear() !== now.getFullYear() ? 'numeric' : undefined
         });
+    }
+
+    function formatChatTime(timestamp) {
+        return new Date(timestamp).toLocaleTimeString('fr-FR', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+
+    function escapeHtml(str) {
+        const div = document.createElement('div');
+        div.textContent = str;
+        return div.innerHTML;
+    }
+
+    // ---- Speech Recognition ----
+    function initSpeechRecognition() {
+        const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!SpeechRecognition) {
+            console.warn('Speech Recognition API not available');
+            return null;
+        }
+
+        const recognition = new SpeechRecognition();
+        recognition.continuous = true;
+        recognition.interimResults = true;
+        recognition.lang = 'fr-FR';
+        recognition.maxAlternatives = 1;
+
+        recognition.onresult = (event) => {
+            let interim = '';
+            let final = '';
+
+            for (let i = 0; i < event.results.length; i++) {
+                const transcript = event.results[i][0].transcript;
+                if (event.results[i].isFinal) {
+                    final += transcript + ' ';
+                } else {
+                    interim += transcript;
+                }
+            }
+
+            if (final) {
+                currentTranscription += final;
+            }
+            interimTranscription = interim;
+
+            // Update live display
+            const display = currentTranscription + interim;
+            if (display.trim()) {
+                transcriptionLive.textContent = display;
+            }
+        };
+
+        recognition.onerror = (event) => {
+            if (event.error !== 'aborted' && event.error !== 'no-speech') {
+                console.warn('Speech recognition error:', event.error);
+            }
+        };
+
+        recognition.onend = () => {
+            // Restart if still recording
+            if (mediaRecorder && mediaRecorder.state === 'recording') {
+                try {
+                    recognition.start();
+                } catch {
+                    // Already started
+                }
+            }
+        };
+
+        return recognition;
+    }
+
+    function startSpeechRecognition() {
+        currentTranscription = '';
+        interimTranscription = '';
+        transcriptionLive.textContent = '';
+
+        speechRecognition = initSpeechRecognition();
+        if (speechRecognition) {
+            try {
+                speechRecognition.start();
+            } catch {
+                // Already started
+            }
+        }
+    }
+
+    function stopSpeechRecognition() {
+        if (speechRecognition) {
+            try {
+                speechRecognition.stop();
+            } catch {
+                // Already stopped
+            }
+            speechRecognition = null;
+        }
     }
 
     // ---- Visualizer ----
@@ -149,14 +302,12 @@
         try {
             const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
 
-            // Setup audio context for visualization
             audioContext = new (window.AudioContext || window.webkitAudioContext)();
             const source = audioContext.createMediaStreamSource(stream);
             analyser = audioContext.createAnalyser();
             analyser.fftSize = 256;
             source.connect(analyser);
 
-            // Setup MediaRecorder
             mediaRecorder = new MediaRecorder(stream);
             audioChunks = [];
 
@@ -172,6 +323,7 @@
                     audioContext.close();
                     audioContext = null;
                 }
+                stopSpeechRecognition();
 
                 const blob = new Blob(audioChunks, { type: 'audio/webm' });
                 showSaveModal(blob);
@@ -180,25 +332,26 @@
             mediaRecorder.start();
             recordingStartTime = Date.now();
 
+            // Start speech recognition
+            startSpeechRecognition();
+
             // UI
             btnRecord.classList.add('recording');
             recorderCard.classList.add('recording');
             recorderHint.textContent = 'Enregistrement en cours...';
 
-            // Timer
             recordingTimer = setInterval(() => {
                 const elapsed = (Date.now() - recordingStartTime) / 1000;
                 recordingTime.textContent = formatTime(elapsed);
             }, 200);
 
-            // Switch visualizer
             cancelAnimationFrame(animationId);
             drawRecordingVisualizer();
         } catch (err) {
             if (err.name === 'NotAllowedError') {
                 recorderHint.textContent = "Acces au microphone refuse. Veuillez l'autoriser.";
             } else {
-                recorderHint.textContent = 'Erreur: impossible de demarrer l\'enregistrement.';
+                recorderHint.textContent = "Erreur: impossible de demarrer l'enregistrement.";
             }
             console.error('Recording error:', err);
         }
@@ -231,10 +384,18 @@
         previewAudio.src = url;
         noteTitle.value = '';
 
-        // Default title with date
         const now = new Date();
         noteTitle.value = `Note du ${now.toLocaleDateString('fr-FR')} ${now.toLocaleTimeString('fr-FR', { hour: '2-digit', minute: '2-digit' })}`;
 
+        // Show transcription
+        const finalTranscription = currentTranscription.trim();
+        if (finalTranscription) {
+            transcriptionText.textContent = finalTranscription;
+        } else {
+            transcriptionText.textContent = 'Aucune transcription disponible (navigateur non compatible ou parole non detectee).';
+        }
+
+        transcriptionLive.textContent = '';
         saveModal.classList.add('active');
         setTimeout(() => noteTitle.select(), 100);
     }
@@ -255,6 +416,7 @@
                 id: generateId(),
                 title: noteTitle.value.trim() || 'Note sans titre',
                 audioData: reader.result,
+                transcription: currentTranscription.trim() || '',
                 duration: pendingDuration,
                 createdAt: Date.now()
             };
@@ -272,7 +434,10 @@
 
         if (filter) {
             const q = filter.toLowerCase();
-            notes = notes.filter(n => n.title.toLowerCase().includes(q));
+            notes = notes.filter(n =>
+                n.title.toLowerCase().includes(q) ||
+                (n.transcription && n.transcription.toLowerCase().includes(q))
+            );
         }
 
         notesList.innerHTML = '';
@@ -298,6 +463,13 @@
             const card = document.createElement('div');
             card.className = 'note-card';
             card.dataset.id = note.id;
+
+            const transcriptionHtml = note.transcription
+                ? `<div class="note-transcription collapsed" data-id="${note.id}">
+                       <div class="note-transcription-label">Transcription</div>
+                       ${escapeHtml(note.transcription)}
+                   </div>`
+                : '';
 
             card.innerHTML = `
                 <div class="note-card-header">
@@ -339,6 +511,7 @@
                         </button>
                     </div>
                 </div>
+                ${transcriptionHtml}
                 <div class="note-player">
                     <div class="custom-player">
                         <button class="btn-play" data-id="${note.id}">
@@ -363,28 +536,18 @@
             notesList.appendChild(card);
         });
 
-        // Attach event listeners
         attachNoteEvents();
     }
 
-    function escapeHtml(str) {
-        const div = document.createElement('div');
-        div.textContent = str;
-        return div.innerHTML;
-    }
-
     function attachNoteEvents() {
-        // Play buttons
         document.querySelectorAll('.btn-play').forEach(btn => {
             btn.addEventListener('click', () => handlePlay(btn.dataset.id));
         });
 
-        // Progress bars
         document.querySelectorAll('.progress-bar').forEach(bar => {
             bar.addEventListener('click', (e) => handleSeek(bar.dataset.id, e));
         });
 
-        // Delete buttons
         document.querySelectorAll('.btn-delete').forEach(btn => {
             btn.addEventListener('click', () => {
                 const card = btn.closest('.note-card');
@@ -402,7 +565,6 @@
             });
         });
 
-        // Download buttons
         document.querySelectorAll('.btn-download').forEach(btn => {
             btn.addEventListener('click', () => {
                 const card = btn.closest('.note-card');
@@ -419,12 +581,18 @@
                 document.body.removeChild(a);
             });
         });
+
+        // Toggle transcription collapse
+        document.querySelectorAll('.note-transcription').forEach(el => {
+            el.addEventListener('click', () => {
+                el.classList.toggle('collapsed');
+            });
+        });
     }
 
     // ---- Playback ----
     function handlePlay(noteId) {
         if (currentlyPlayingId === noteId) {
-            // Toggle pause/resume
             if (currentAudio.paused) {
                 currentAudio.play();
                 updatePlayButton(noteId, true);
@@ -435,7 +603,6 @@
             return;
         }
 
-        // Stop previous
         stopPlayback();
 
         const notes = getNotes();
@@ -503,7 +670,217 @@
         currentAudio.currentTime = percent * currentAudio.duration;
     }
 
+    // ---- AI Chat ----
+    function openChat() {
+        chatPanel.classList.add('open');
+        chatOverlay.classList.add('active');
+        chatInput.focus();
+    }
+
+    function closeChat() {
+        chatPanel.classList.remove('open');
+        chatOverlay.classList.remove('active');
+    }
+
+    function openSettings() {
+        const settings = getAiSettings();
+        apiUrlInput.value = settings.apiUrl || '';
+        apiKeyInput.value = settings.apiKey || '';
+        apiModelInput.value = settings.model || '';
+        settingsModal.classList.add('active');
+    }
+
+    function closeSettings() {
+        settingsModal.classList.remove('active');
+    }
+
+    function saveSettings() {
+        const settings = {
+            apiUrl: apiUrlInput.value.trim(),
+            apiKey: apiKeyInput.value.trim(),
+            model: apiModelInput.value.trim()
+        };
+        saveAiSettings(settings);
+        closeSettings();
+        setChatStatus('Configuration sauvegardee.', 'success');
+        setTimeout(() => setChatStatus(''), 2000);
+    }
+
+    function setChatStatus(message, type = '') {
+        chatStatus.textContent = message;
+        chatStatus.className = 'chat-status' + (type ? ' ' + type : '');
+    }
+
+    function buildNotesContext() {
+        const notes = getNotes();
+        if (notes.length === 0) {
+            return "L'utilisateur n'a aucune note vocale enregistree.";
+        }
+
+        let context = `L'utilisateur a ${notes.length} note(s) vocale(s) :\n\n`;
+        notes.forEach((note, i) => {
+            const date = new Date(note.createdAt).toLocaleString('fr-FR');
+            const duration = formatTime(note.duration);
+            context += `--- Note ${i + 1} ---\n`;
+            context += `Titre: ${note.title}\n`;
+            context += `Date: ${date}\n`;
+            context += `Duree: ${duration}\n`;
+            if (note.transcription) {
+                context += `Transcription: ${note.transcription}\n`;
+            } else {
+                context += `Transcription: (non disponible)\n`;
+            }
+            context += '\n';
+        });
+
+        return context;
+    }
+
+    function renderChatMessages() {
+        const messages = getChatHistory();
+        chatMessagesEl.innerHTML = '';
+
+        if (messages.length === 0) {
+            chatMessagesEl.innerHTML = `
+                <div class="chat-welcome">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H6a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                        <circle cx="9" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                        <circle cx="15" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                        <path d="M10 17a2 2 0 0 0 4 0"/>
+                    </svg>
+                    <p>Posez-moi des questions sur vos notes vocales !</p>
+                    <span>Je peux analyser, resumer et retrouver des informations dans toutes vos notes.</span>
+                </div>`;
+            return;
+        }
+
+        messages.forEach(msg => {
+            const msgEl = document.createElement('div');
+            msgEl.className = `chat-msg ${msg.role}`;
+            msgEl.innerHTML = `
+                <div class="chat-msg-bubble">${escapeHtml(msg.content)}</div>
+                <div class="chat-msg-time">${formatChatTime(msg.timestamp)}</div>
+            `;
+            chatMessagesEl.appendChild(msgEl);
+        });
+
+        scrollChatToBottom();
+    }
+
+    function addChatMessage(role, content) {
+        const messages = getChatHistory();
+        messages.push({ role, content, timestamp: Date.now() });
+        saveChatHistory(messages);
+        renderChatMessages();
+    }
+
+    function showTypingIndicator() {
+        const el = document.createElement('div');
+        el.className = 'typing-indicator';
+        el.id = 'typingIndicator';
+        el.innerHTML = '<span></span><span></span><span></span>';
+        chatMessagesEl.appendChild(el);
+        scrollChatToBottom();
+    }
+
+    function removeTypingIndicator() {
+        const el = document.getElementById('typingIndicator');
+        if (el) el.remove();
+    }
+
+    function scrollChatToBottom() {
+        chatMessagesEl.scrollTop = chatMessagesEl.scrollHeight;
+    }
+
+    async function sendChatMessage() {
+        const message = chatInput.value.trim();
+        if (!message || isAiResponding) return;
+
+        const settings = getAiSettings();
+        if (!settings.apiUrl || !settings.apiKey) {
+            setChatStatus('Configurez l\'API dans les parametres (icone engrenage).', 'error');
+            return;
+        }
+
+        // Add user message
+        addChatMessage('user', message);
+        chatInput.value = '';
+
+        isAiResponding = true;
+        btnSend.disabled = true;
+        setChatStatus('');
+        showTypingIndicator();
+
+        try {
+            const notesContext = buildNotesContext();
+            const history = getChatHistory();
+
+            // Build messages for API
+            const apiMessages = [
+                {
+                    role: 'system',
+                    content: `Tu es un assistant IA integre dans une application de notes vocales appelée VoiceNotes. Tu as acces aux transcriptions de toutes les notes vocales de l'utilisateur. Tu dois repondre en francais. Tu peux analyser, resumer, comparer et retrouver des informations dans les notes. Si l'utilisateur te pose une question sur le contenu de ses notes, base ta reponse uniquement sur les transcriptions disponibles. Si une note n'a pas de transcription, mentionne-le. Sois concis et utile.\n\nVoici les notes vocales de l'utilisateur :\n\n${notesContext}`
+                }
+            ];
+
+            // Add conversation history (last 20 messages max)
+            const recentHistory = history.slice(-20);
+            recentHistory.forEach(msg => {
+                apiMessages.push({
+                    role: msg.role === 'user' ? 'user' : 'assistant',
+                    content: msg.content
+                });
+            });
+
+            const response = await fetch(settings.apiUrl, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Authorization': `Bearer ${settings.apiKey}`
+                },
+                body: JSON.stringify({
+                    model: settings.model || 'gpt-4o-mini',
+                    messages: apiMessages,
+                    max_tokens: 1024,
+                    temperature: 0.7
+                })
+            });
+
+            removeTypingIndicator();
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(`API error ${response.status}: ${errorData.substring(0, 200)}`);
+            }
+
+            const data = await response.json();
+            const assistantMessage = data.choices?.[0]?.message?.content;
+
+            if (assistantMessage) {
+                addChatMessage('assistant', assistantMessage);
+            } else {
+                throw new Error('Reponse vide de l\'API.');
+            }
+        } catch (err) {
+            removeTypingIndicator();
+            console.error('AI Chat error:', err);
+            setChatStatus(`Erreur: ${err.message}`, 'error');
+        } finally {
+            isAiResponding = false;
+            btnSend.disabled = false;
+        }
+    }
+
+    function clearChat() {
+        saveChatHistory([]);
+        renderChatMessages();
+        setChatStatus('');
+    }
+
     // ---- Events ----
+
+    // Recording
     btnRecord.addEventListener('click', () => {
         if (mediaRecorder && mediaRecorder.state === 'recording') {
             stopRecording();
@@ -512,27 +889,52 @@
         }
     });
 
+    // Save modal
     btnSave.addEventListener('click', saveCurrentNote);
-
     btnDiscard.addEventListener('click', hideSaveModal);
-
     saveModal.addEventListener('click', (e) => {
         if (e.target === saveModal) hideSaveModal();
     });
-
     noteTitle.addEventListener('keydown', (e) => {
         if (e.key === 'Enter') saveCurrentNote();
     });
 
+    // Search
     searchInput.addEventListener('input', () => {
         renderNotes(searchInput.value);
     });
 
+    // Chat panel
+    btnAiToggle.addEventListener('click', openChat);
+    btnChatClose.addEventListener('click', closeChat);
+    chatOverlay.addEventListener('click', closeChat);
+
+    // Chat input
+    btnSend.addEventListener('click', sendChatMessage);
+    chatInput.addEventListener('keydown', (e) => {
+        if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            sendChatMessage();
+        }
+    });
+
+    // Chat settings
+    btnChatSettings.addEventListener('click', openSettings);
+    btnSettingsCancel.addEventListener('click', closeSettings);
+    btnSettingsSave.addEventListener('click', saveSettings);
+    settingsModal.addEventListener('click', (e) => {
+        if (e.target === settingsModal) closeSettings();
+    });
+
+    // Clear chat
+    btnChatClear.addEventListener('click', clearChat);
+
     // Keyboard shortcut: space to record
     document.addEventListener('keydown', (e) => {
-        // Don't trigger if typing in an input
         if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
         if (saveModal.classList.contains('active')) return;
+        if (settingsModal.classList.contains('active')) return;
+        if (chatPanel.classList.contains('open')) return;
 
         if (e.code === 'Space') {
             e.preventDefault();
@@ -540,7 +942,7 @@
         }
     });
 
-    // ---- Canvas resize ----
+    // Canvas resize
     function resizeCanvas() {
         const container = visualizer.parentElement;
         visualizer.width = container.clientWidth;
@@ -552,5 +954,6 @@
 
     // ---- Init ----
     renderNotes();
+    renderChatMessages();
     drawIdleVisualizer();
 })();

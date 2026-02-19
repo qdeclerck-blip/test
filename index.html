@@ -10,14 +10,25 @@
     <div class="app">
         <header class="header">
             <div class="header-content">
-                <div class="logo">
-                    <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                        <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
-                        <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
-                        <line x1="12" y1="19" x2="12" y2="23"/>
-                        <line x1="8" y1="23" x2="16" y2="23"/>
-                    </svg>
-                    <h1>VoiceNotes</h1>
+                <div class="header-top">
+                    <div class="logo">
+                        <svg class="logo-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
+                            <path d="M19 10v2a7 7 0 0 1-14 0v-2"/>
+                            <line x1="12" y1="19" x2="12" y2="23"/>
+                            <line x1="8" y1="23" x2="16" y2="23"/>
+                        </svg>
+                        <h1>VoiceNotes</h1>
+                    </div>
+                    <button class="btn-ai-toggle" id="btnAiToggle" title="Assistant IA">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H6a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                            <circle cx="9" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                            <circle cx="15" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                            <path d="M10 17a2 2 0 0 0 4 0"/>
+                        </svg>
+                        <span>Assistant IA</span>
+                    </button>
                 </div>
                 <p class="subtitle">Vos notes vocales, simplement.</p>
             </div>
@@ -31,6 +42,7 @@
                         <canvas id="visualizer" width="300" height="80"></canvas>
                     </div>
                     <div class="recording-time" id="recordingTime">00:00</div>
+                    <div class="transcription-live" id="transcriptionLive"></div>
                     <div class="recorder-controls">
                         <button class="btn-record" id="btnRecord" title="Enregistrer">
                             <svg class="icon-mic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -59,9 +71,40 @@
                         <label for="noteTitle">Titre</label>
                         <input type="text" id="noteTitle" placeholder="Ma note vocale..." autocomplete="off">
                     </div>
+                    <div class="form-group">
+                        <label>Transcription</label>
+                        <div class="transcription-preview" id="transcriptionPreview">
+                            <p class="transcription-text" id="transcriptionText">Aucune transcription disponible</p>
+                        </div>
+                    </div>
                     <div class="modal-actions">
                         <button class="btn btn-secondary" id="btnDiscard">Supprimer</button>
                         <button class="btn btn-primary" id="btnSave">Sauvegarder</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Settings Modal -->
+            <div class="modal-overlay" id="settingsModal">
+                <div class="modal modal-settings">
+                    <h2>Configuration IA</h2>
+                    <p class="settings-description">Connectez un modele de langage compatible OpenAI pour interroger vos notes.</p>
+                    <div class="form-group">
+                        <label for="apiUrl">URL de l'API</label>
+                        <input type="text" id="apiUrl" placeholder="https://api.openai.com/v1/chat/completions" autocomplete="off">
+                        <span class="form-hint">Compatible OpenAI, Groq, OpenRouter, Ollama...</span>
+                    </div>
+                    <div class="form-group">
+                        <label for="apiKey">Cle API</label>
+                        <input type="password" id="apiKey" placeholder="sk-..." autocomplete="off">
+                    </div>
+                    <div class="form-group">
+                        <label for="apiModel">Modele</label>
+                        <input type="text" id="apiModel" placeholder="gpt-4o-mini" autocomplete="off">
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" id="btnSettingsCancel">Annuler</button>
+                        <button class="btn btn-primary" id="btnSettingsSave">Sauvegarder</button>
                     </div>
                 </div>
             </div>
@@ -79,9 +122,7 @@
                     </svg>
                     <input type="text" id="searchInput" placeholder="Rechercher une note...">
                 </div>
-                <div class="notes-list" id="notesList">
-                    <!-- Notes will be inserted here -->
-                </div>
+                <div class="notes-list" id="notesList"></div>
                 <div class="empty-state" id="emptyState">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
                         <path d="M12 1a3 3 0 0 0-3 3v8a3 3 0 0 0 6 0V4a3 3 0 0 0-3-3z"/>
@@ -94,6 +135,66 @@
                 </div>
             </section>
         </main>
+
+        <!-- AI Chat Panel -->
+        <aside class="chat-panel" id="chatPanel">
+            <div class="chat-header">
+                <div class="chat-header-left">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H6a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                        <circle cx="9" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                        <circle cx="15" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                        <path d="M10 17a2 2 0 0 0 4 0"/>
+                    </svg>
+                    <h3>Assistant IA</h3>
+                </div>
+                <div class="chat-header-right">
+                    <button class="btn-icon" id="btnChatSettings" title="Parametres">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <circle cx="12" cy="12" r="3"/>
+                            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" id="btnChatClear" title="Effacer la conversation">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <polyline points="3 6 5 6 21 6"/>
+                            <path d="M19 6l-1 14a2 2 0 0 1-2 2H8a2 2 0 0 1-2-2L5 6"/>
+                        </svg>
+                    </button>
+                    <button class="btn-icon" id="btnChatClose" title="Fermer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="18" y1="6" x2="6" y2="18"/>
+                            <line x1="6" y1="6" x2="18" y2="18"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+            <div class="chat-messages" id="chatMessages">
+                <div class="chat-welcome">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                        <path d="M12 2a2 2 0 0 1 2 2c0 .74-.4 1.39-1 1.73V7h1a7 7 0 0 1 7 7h1a1 1 0 0 1 1 1v3a1 1 0 0 1-1 1h-1.27a7 7 0 0 1-12.46 0H6a1 1 0 0 1-1-1v-3a1 1 0 0 1 1-1h1a7 7 0 0 1 7-7h1V5.73c-.6-.34-1-.99-1-1.73a2 2 0 0 1 2-2z"/>
+                        <circle cx="9" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                        <circle cx="15" cy="13" r="1.25" fill="currentColor" stroke="none"/>
+                        <path d="M10 17a2 2 0 0 0 4 0"/>
+                    </svg>
+                    <p>Posez-moi des questions sur vos notes vocales !</p>
+                    <span>Je peux analyser, resumer et retrouver des informations dans toutes vos notes.</span>
+                </div>
+            </div>
+            <div class="chat-input-area">
+                <div class="chat-status" id="chatStatus"></div>
+                <div class="chat-input-row">
+                    <input type="text" id="chatInput" placeholder="Posez une question sur vos notes...">
+                    <button class="btn-send" id="btnSend" title="Envoyer">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                            <line x1="22" y1="2" x2="11" y2="13"/>
+                            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        </aside>
+        <div class="chat-overlay" id="chatOverlay"></div>
 
         <footer class="footer">
             <p>VoiceNotes &mdash; Toutes vos notes restent sur votre appareil.</p>
