@@ -1,0 +1,209 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Maison Yvoir — Administration</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;1,300&family=Inter:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg: #faf8f5;
+            --bg-alt: #f2efe9;
+            --bg-dark: #1a1a1a;
+            --text: #2c2c2c;
+            --text-light: #6b6b6b;
+            --accent: #4a6741;
+            --accent-dark: #3a5232;
+            --border: #e0dcd5;
+            --danger: #c0392b;
+            --font-serif: 'Cormorant Garamond', Georgia, serif;
+            --font-sans: 'Inter', -apple-system, sans-serif;
+        }
+        html { font-size: 16px; -webkit-font-smoothing: antialiased; }
+        body {
+            font-family: var(--font-sans);
+            background: var(--bg-dark);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--text);
+        }
+        .login-container {
+            width: 100%;
+            max-width: 420px;
+            padding: 1.5rem;
+        }
+        .login-card {
+            background: var(--bg);
+            border-radius: 16px;
+            padding: 3rem 2.5rem;
+            box-shadow: 0 24px 80px rgba(0,0,0,0.3);
+        }
+        .login-brand {
+            text-align: center;
+            margin-bottom: 2.5rem;
+        }
+        .login-brand h1 {
+            font-family: var(--font-serif);
+            font-weight: 300;
+            font-size: 2rem;
+            letter-spacing: 0.08em;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .login-brand p {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            letter-spacing: 0.1em;
+            text-transform: uppercase;
+        }
+        .form-group {
+            margin-bottom: 1.25rem;
+        }
+        .form-group label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 500;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            color: var(--text);
+            margin-bottom: 0.5rem;
+        }
+        .form-group input {
+            width: 100%;
+            padding: 0.85rem 1rem;
+            font-family: var(--font-sans);
+            font-size: 0.95rem;
+            color: var(--text);
+            background: var(--bg-alt);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            transition: border-color 0.3s, box-shadow 0.3s;
+            -webkit-appearance: none;
+        }
+        .form-group input:focus {
+            outline: none;
+            border-color: var(--accent);
+            box-shadow: 0 0 0 3px rgba(74, 103, 65, 0.1);
+        }
+        .login-btn {
+            width: 100%;
+            padding: 1rem;
+            font-family: var(--font-sans);
+            font-size: 0.9rem;
+            font-weight: 500;
+            letter-spacing: 0.04em;
+            color: white;
+            background: var(--accent);
+            border: none;
+            border-radius: 100px;
+            cursor: pointer;
+            transition: background 0.3s, transform 0.2s, box-shadow 0.3s;
+            margin-top: 0.5rem;
+        }
+        .login-btn:hover {
+            background: var(--accent-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 8px 24px rgba(74, 103, 65, 0.25);
+        }
+        .login-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+        .error-msg {
+            background: rgba(192, 57, 43, 0.08);
+            color: var(--danger);
+            padding: 0.75rem 1rem;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 1rem;
+            display: none;
+            border: 1px solid rgba(192, 57, 43, 0.15);
+        }
+        .error-msg.visible { display: block; }
+        .back-link {
+            display: block;
+            text-align: center;
+            margin-top: 1.5rem;
+            font-size: 0.8rem;
+            color: var(--text-light);
+            text-decoration: none;
+            transition: color 0.3s;
+        }
+        .back-link:hover { color: var(--text); }
+    </style>
+</head>
+<body>
+    <div class="login-container">
+        <div class="login-card">
+            <div class="login-brand">
+                <h1>Maison Yvoir</h1>
+                <p>Administration</p>
+            </div>
+            <div class="error-msg" id="errorMsg"></div>
+            <form id="loginForm">
+                <div class="form-group">
+                    <label for="username">Identifiant</label>
+                    <input type="text" id="username" name="username" required autocomplete="username" autofocus>
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password">
+                </div>
+                <button type="submit" class="login-btn" id="loginBtn">Se connecter</button>
+            </form>
+            <a href="/" class="back-link">Retour au site</a>
+        </div>
+    </div>
+    <script>
+        (function() {
+            var form = document.getElementById('loginForm');
+            var errorMsg = document.getElementById('errorMsg');
+            var loginBtn = document.getElementById('loginBtn');
+
+            // If already logged in, redirect
+            fetch('/api/auth/me', { credentials: 'same-origin' })
+                .then(function(r) { if (r.ok) window.location.href = '/admin'; });
+
+            form.addEventListener('submit', function(e) {
+                e.preventDefault();
+                errorMsg.classList.remove('visible');
+                loginBtn.disabled = true;
+                loginBtn.textContent = 'Connexion...';
+
+                var username = document.getElementById('username').value.trim();
+                var password = document.getElementById('password').value;
+
+                fetch('/api/auth/login', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    credentials: 'same-origin',
+                    body: JSON.stringify({ username: username, password: password })
+                })
+                .then(function(r) { return r.json().then(function(d) { return { ok: r.ok, data: d }; }); })
+                .then(function(res) {
+                    if (res.ok && res.data.success) {
+                        window.location.href = '/admin';
+                    } else {
+                        errorMsg.textContent = res.data.error || 'Erreur de connexion';
+                        errorMsg.classList.add('visible');
+                    }
+                })
+                .catch(function() {
+                    errorMsg.textContent = 'Erreur réseau. Réessayez.';
+                    errorMsg.classList.add('visible');
+                })
+                .finally(function() {
+                    loginBtn.disabled = false;
+                    loginBtn.textContent = 'Se connecter';
+                });
+            });
+        })();
+    </script>
+</body>
+</html>

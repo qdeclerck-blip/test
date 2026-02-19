@@ -1,0 +1,95 @@
+{
+  "hero": {
+    "label": "Yvoir — Vallée de la Meuse — Belgique",
+    "title_line1": "L'art de",
+    "title_line2": "vivre autrement",
+    "subtitle": "Une maison d'exception où le confort d'un foyer rencontre l'élégance d'un hôtel, au cœur de la nature wallonne."
+  },
+  "concept": {
+    "label": "Notre Philosophie",
+    "title": "La Maison<br><em>Hôtelière</em>",
+    "paragraphs": [
+      "Nous ne listons pas des maisons — nous créons des expériences. Maison Yvoir incarne une vision où chaque détail est pensé pour offrir le meilleur de deux mondes : la chaleur et la convivialité d'une maison de vacances, avec le service et le savoir-faire des hôtels les plus inspirants.",
+      "Nichée dans la vallée de la Meuse, notre maison est un refuge où le temps s'arrête, où chaque saison révèle une nouvelle facette de la beauté wallonne."
+    ],
+    "image1_caption": "La terrasse au lever du soleil",
+    "image2_caption": "Vue sur la Meuse"
+  },
+  "stats": [
+    { "value": 250, "unit": "m²", "label": "d'espace de vie" },
+    { "value": 4, "unit": "chambres", "label": "pour 8 voyageurs" },
+    { "value": 2000, "unit": "m²", "label": "de jardin privé" },
+    { "value": 5, "unit": "min", "label": "de la Meuse à pied" }
+  ],
+  "maison": {
+    "label": "La Propriété",
+    "title": "Un écrin de<br><em>sérénité</em>",
+    "intro": "Chaque pièce a été pensée pour créer une harmonie entre modernité et authenticité. Les matériaux nobles — pierre locale, bois de chêne, lin naturel — dialoguent avec un design contemporain épuré.",
+    "rooms": [
+      { "name": "Le Salon", "description": "Un espace généreux avec cheminée en pierre, baigné de lumière naturelle et ouvrant sur le jardin." },
+      { "name": "La Cuisine", "description": "Entièrement équipée, elle marie l'élégance du marbre à la fonctionnalité d'un espace de chef." },
+      { "name": "Les Chambres", "description": "Quatre suites habillées de lin, chacune avec sa propre identité et vue sur la nature environnante." },
+      { "name": "Le Spa", "description": "Sauna, bain nordique en terrasse et espace détente pour une parenthèse bien-être absolue." }
+    ]
+  },
+  "services": {
+    "label": "L'Expérience",
+    "title": "Le service d'un hôtel,<br><em>la liberté d'une maison</em>",
+    "items": [
+      { "icon": "breakfast", "title": "Petit-déjeuner frais", "description": "Chaque matin, un panier de produits locaux et artisanaux vous attend : pain de campagne, confitures maison, fromages de la région." },
+      { "icon": "key", "title": "Arrivée sans stress", "description": "Accès sans clé, instructions claires, maison prête à vivre. Pas de check-in fastidieux, juste le plaisir d'arriver." },
+      { "icon": "house", "title": "Ménage quotidien", "description": "Un service de ménage discret pour que vous n'ayez qu'à profiter de votre séjour, sans la moindre contrainte." },
+      { "icon": "clock", "title": "Conciergerie 24/7", "description": "Réservation de restaurant, activités, transport — notre équipe est disponible à tout moment pour répondre à vos envies." },
+      { "icon": "wifi", "title": "Wi-Fi haut débit", "description": "Connexion fibre optique dans toute la maison. Idéal pour le travail à distance ou le streaming en soirée." },
+      { "icon": "star", "title": "Expériences sur mesure", "description": "Dégustation à la Brasserie du Bocq, visite de Maredsous, kayak sur la Lesse — nous composons votre séjour idéal." }
+    ]
+  },
+  "decouvrir": {
+    "label": "La Destination",
+    "title": "Yvoir, joyau de<br><em>la Meuse</em>",
+    "intro": "Au cœur de la province de Namur, Yvoir est une invitation permanente à la contemplation et à l'aventure. La vallée de la Meuse dévoile ici ses plus beaux paysages, entre forêts ancestrales, villages de pierre et eaux vives.",
+    "cards": [
+      { "number": "01", "title": "Château de Poilvache", "description": "Les ruines majestueuses de la plus grande forteresse médiévale de la vallée de la Meuse, datant des XIIIe et XIVe siècles. Un panorama à couper le souffle." },
+      { "number": "02", "title": "Abbaye de Maredsous", "description": "L'abbaye bénédictine perpétue une tradition d'hospitalité dans un cadre naturel exceptionnel. Fromages, bières et sérénité au programme." },
+      { "number": "03", "title": "L'Île d'Yvoir", "description": "Sports nautiques, ski nautique, wakeboard et espaces de détente — une oasis de loisirs sur la Meuse pour toute la famille." },
+      { "number": "04", "title": "Vallée du Bocq", "description": "38 sentiers de randonnée à travers forêts et prairies. La Brasserie du Bocq, fondée en 1858, ponctue le parcours d'une halte gourmande." },
+      { "number": "05", "title": "Kayak sur la Lesse", "description": "Une descente inoubliable entre falaises calcaires et forêts verdoyantes. L'aventure nature par excellence en Wallonie." },
+      { "number": "06", "title": "Villages de charme", "description": "Spontin et son château féodal, Godinne et son prieuré, Purnode et sa brasserie — chaque village raconte une histoire unique." }
+    ]
+  },
+  "gallery": {
+    "label": "Ambiances",
+    "title": "Chaque saison,<br><em>une nouvelle lumière</em>",
+    "items": [
+      { "caption": "Le jardin au printemps", "wide": true },
+      { "caption": "Salon & cheminée", "wide": false },
+      { "caption": "Suite principale", "wide": false },
+      { "caption": "Cuisine ouverte", "wide": false },
+      { "caption": "Vue sur la Meuse depuis la terrasse", "wide": true },
+      { "caption": "Le bain nordique", "wide": false },
+      { "caption": "Petit-déjeuner local", "wide": false }
+    ]
+  },
+  "quote": "On ne vient pas simplement séjourner à Yvoir. On vient y vivre un moment hors du temps, bercé par le murmure de la Meuse et la douceur de la campagne wallonne.",
+  "seasons": {
+    "label": "Toute l'année",
+    "title": "Un refuge pour<br><em>chaque saison</em>",
+    "items": [
+      { "name": "Printemps", "description": "Les jardins s'éveillent, les sentiers se parent de fleurs sauvages. Idéal pour la randonnée et les visites de villages." },
+      { "name": "Été", "description": "L'Île d'Yvoir, le kayak sur la Lesse, les terrasses au bord de la Meuse. L'été wallon dans toute sa splendeur." },
+      { "name": "Automne", "description": "Un festival de couleurs dans la vallée du Bocq. Dégustations de bières artisanales et soirées au coin du feu." },
+      { "name": "Hiver", "description": "Le silence de la vallée enneigée, le sauna, le bain nordique sous les étoiles. Une parenthèse de quiétude absolue." }
+    ]
+  },
+  "contact": {
+    "label": "Réservation",
+    "title": "Votre prochain<br><em>séjour commence ici</em>",
+    "description": "Que ce soit pour un week-end de déconnexion ou un long séjour en famille, nous sommes là pour composer votre expérience idéale à Yvoir.",
+    "email": "bonjour@maison-yvoir.be",
+    "phone": "+32 (0)82 00 00 00",
+    "address": "Yvoir, Province de Namur, Belgique"
+  },
+  "footer": {
+    "tagline": "La Maison Hôtelière de la Vallée de la Meuse."
+  }
+}

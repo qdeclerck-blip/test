@@ -1,0 +1,7 @@
+node_modules/
+uploads/
+data/.secrets.json
+data/users.json
+data/backups/
+.env
+*.log
