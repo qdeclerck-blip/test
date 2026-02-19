@@ -421,15 +421,13 @@
 
         <!-- SETTINGS Panel -->
         <div class="panel" id="panel-settings">
-            <div class="card"><div class="card-header"><h3>Changer le mot de passe</h3></div><div class="card-body">
-                <div class="field"><label>Mot de passe actuel</label><input type="password" id="currentPassword"></div>
-                <div class="field"><label>Nouveau mot de passe</label><input type="password" id="newPassword"><p class="field-hint">Minimum 8 caractères</p></div>
-                <div class="field"><label>Confirmer</label><input type="password" id="confirmPassword"></div>
-                <button class="btn btn-primary" id="changePasswordBtn">Modifier le mot de passe</button>
-            </div></div>
             <div class="card"><div class="card-header"><h3>Pied de page</h3></div><div class="card-body">
                 <div class="field"><label>Slogan</label><input type="text" data-path="footer.tagline"></div>
                 <button class="btn btn-primary save-section" data-section="footer">Enregistrer</button>
+            </div></div>
+            <div class="card"><div class="card-header"><h3>Session</h3></div><div class="card-body">
+                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Vous êtes connecté via votre token GitHub. Le token est stocké uniquement dans la session de votre navigateur et sera supprimé à la fermeture de l'onglet.</p>
+                <button class="btn btn-danger" id="logoutBtn">Se déconnecter</button>
             </div></div>
         </div>
 
@@ -443,241 +441,222 @@
 (function() {
     'use strict';
 
+    // --- GitHub API config ---
+    var GH_TOKEN = sessionStorage.getItem('gh_token');
+    var GH_REPO = sessionStorage.getItem('gh_repo') || 'qdeclerck-blip/test';
+    var GH_BRANCH = 'main'; // branch to commit to
+    var GH_API = 'https://api.github.com';
+    var contentSha = ''; // SHA of current content.json for updates
+
+    if (!GH_TOKEN) { window.location.href = 'login.html'; }
+
     var content = {};
     var toastTimer;
 
-    // --- Helpers ---
     function toast(msg, type) {
         var el = document.getElementById('toast');
         el.textContent = msg;
         el.className = 'toast visible ' + (type || '');
         clearTimeout(toastTimer);
-        toastTimer = setTimeout(function() { el.classList.remove('visible'); }, 3000);
+        toastTimer = setTimeout(function() { el.classList.remove('visible'); }, 3500);
     }
 
-    function api(method, url, body) {
-        var opts = { method: method, credentials: 'same-origin', headers: {} };
-        if (body) { opts.headers['Content-Type'] = 'application/json'; opts.body = JSON.stringify(body); }
-        return fetch(url, opts).then(function(r) {
-            if (r.status === 401) { window.location.href = '/admin/login'; return Promise.reject('auth'); }
-            return r.json();
-        });
+    function ghFetch(path, opts) {
+        opts = opts || {};
+        opts.headers = opts.headers || {};
+        opts.headers['Authorization'] = 'token ' + GH_TOKEN;
+        opts.headers['Accept'] = 'application/vnd.github.v3+json';
+        return fetch(GH_API + path, opts);
     }
 
-    // Deep get/set on object by dot path
     function deepGet(obj, path) {
         return path.split('.').reduce(function(o, k) { return o != null ? o[k] : undefined; }, obj);
     }
     function deepSet(obj, path, val) {
-        var keys = path.split('.');
-        var last = keys.pop();
-        var target = keys.reduce(function(o, k) { return o[k]; }, obj);
-        target[last] = val;
+        var keys = path.split('.'); var last = keys.pop();
+        keys.reduce(function(o, k) { return o[k]; }, obj)[last] = val;
     }
 
-    // --- Load content ---
+    // --- Load content from GitHub ---
     function loadContent() {
-        api('GET', '/api/content').then(function(data) {
-            content = data;
-            populateFields();
-            buildDynamicLists();
-        });
+        ghFetch('/repos/' + GH_REPO + '/contents/data/content.json?ref=' + GH_BRANCH)
+            .then(function(r) { if (!r.ok) throw new Error('not found'); return r.json(); })
+            .then(function(file) {
+                contentSha = file.sha;
+                var decoded = atob(file.content.replace(/\n/g, ''));
+                // Handle UTF-8
+                var bytes = new Uint8Array(decoded.length);
+                for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+                var text = new TextDecoder('utf-8').decode(bytes);
+                content = JSON.parse(text);
+                populateFields();
+                buildDynamicLists();
+                toast('Contenu chargé', 'success');
+            })
+            .catch(function(err) {
+                toast('Erreur: impossible de charger le contenu', 'error');
+                console.error(err);
+            });
     }
 
     function populateFields() {
         document.querySelectorAll('[data-path]').forEach(function(el) {
             var val = deepGet(content, el.getAttribute('data-path'));
-            if (val !== undefined) {
-                if (el.tagName === 'TEXTAREA') el.value = val;
-                else el.value = val;
-            }
+            if (val !== undefined) el.value = val;
         });
     }
 
-    // --- Collect section data from fields ---
+    // --- Save content to GitHub via commit ---
+    function saveToGitHub(updatedContent) {
+        var jsonStr = JSON.stringify(updatedContent, null, 2);
+        var encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        return ghFetch('/repos/' + GH_REPO + '/contents/data/content.json', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: 'Update: contenu modifié via admin CMS',
+                content: encoded,
+                sha: contentSha,
+                branch: GH_BRANCH
+            })
+        })
+        .then(function(r) {
+            if (!r.ok) return r.json().then(function(d) { throw new Error(d.message || 'Erreur GitHub'); });
+            return r.json();
+        })
+        .then(function(res) {
+            contentSha = res.content.sha;
+            return true;
+        });
+    }
+
+    // --- Collect section data ---
     function collectSection(section) {
         if (section === 'stats') return collectStats();
         if (section === 'quote') {
             var ta = document.querySelector('[data-path="quote"]');
             return ta ? ta.value : content.quote;
         }
-
         var data = JSON.parse(JSON.stringify(content[section] || {}));
         document.querySelectorAll('#panel-' + section + ' [data-path]').forEach(function(el) {
             var path = el.getAttribute('data-path');
-            if (path.startsWith(section + '.')) {
-                var subPath = path.substring(section.length + 1);
-                deepSet(data, subPath, el.value);
-            }
+            if (path.startsWith(section + '.')) deepSet(data, path.substring(section.length + 1), el.value);
         });
-
-        // Collect dynamic lists
         if (section === 'maison') data.rooms = collectItemList('roomsList', ['name', 'description']);
         if (section === 'services') data.items = collectServiceList();
         if (section === 'decouvrir') data.cards = collectDecouvrirList();
         if (section === 'gallery') data.items = collectGalleryList();
         if (section === 'seasons') data.items = collectItemList('seasonsList', ['name', 'description']);
-
         return data;
     }
 
     function collectStats() {
         var items = [];
-        document.querySelectorAll('#statsList .item-entry').forEach(function(entry) {
-            items.push({
-                value: parseInt(entry.querySelector('[data-field="value"]').value, 10) || 0,
-                unit: entry.querySelector('[data-field="unit"]').value,
-                label: entry.querySelector('[data-field="label"]').value
-            });
-        });
-        return items;
+        document.querySelectorAll('#statsList .item-entry').forEach(function(e) {
+            items.push({ value: parseInt(e.querySelector('[data-field="value"]').value, 10) || 0,
+                unit: e.querySelector('[data-field="unit"]').value, label: e.querySelector('[data-field="label"]').value });
+        }); return items;
     }
-
-    function collectItemList(listId, fields) {
+    function collectItemList(id, fields) {
         var items = [];
-        document.querySelectorAll('#' + listId + ' .item-entry').forEach(function(entry) {
-            var item = {};
-            fields.forEach(function(f) {
-                var el = entry.querySelector('[data-field="' + f + '"]');
-                if (el) item[f] = el.value;
-            });
+        document.querySelectorAll('#' + id + ' .item-entry').forEach(function(e) {
+            var item = {}; fields.forEach(function(f) { var el = e.querySelector('[data-field="' + f + '"]'); if (el) item[f] = el.value; });
             items.push(item);
-        });
-        return items;
+        }); return items;
     }
-
     function collectServiceList() {
         var items = [];
-        document.querySelectorAll('#servicesList .item-entry').forEach(function(entry) {
-            items.push({
-                icon: entry.querySelector('[data-field="icon"]').value,
-                title: entry.querySelector('[data-field="title"]').value,
-                description: entry.querySelector('[data-field="description"]').value
-            });
-        });
-        return items;
+        document.querySelectorAll('#servicesList .item-entry').forEach(function(e) {
+            items.push({ icon: e.querySelector('[data-field="icon"]').value, title: e.querySelector('[data-field="title"]').value,
+                description: e.querySelector('[data-field="description"]').value });
+        }); return items;
     }
-
     function collectDecouvrirList() {
         var items = [];
-        document.querySelectorAll('#decouvrirList .item-entry').forEach(function(entry) {
-            items.push({
-                number: entry.querySelector('[data-field="number"]').value,
-                title: entry.querySelector('[data-field="title"]').value,
-                description: entry.querySelector('[data-field="description"]').value
-            });
-        });
-        return items;
+        document.querySelectorAll('#decouvrirList .item-entry').forEach(function(e) {
+            items.push({ number: e.querySelector('[data-field="number"]').value, title: e.querySelector('[data-field="title"]').value,
+                description: e.querySelector('[data-field="description"]').value });
+        }); return items;
     }
-
     function collectGalleryList() {
         var items = [];
-        document.querySelectorAll('#galleryList .item-entry').forEach(function(entry) {
-            items.push({
-                caption: entry.querySelector('[data-field="caption"]').value,
-                wide: entry.querySelector('[data-field="wide"]').checked
-            });
-        });
-        return items;
+        document.querySelectorAll('#galleryList .item-entry').forEach(function(e) {
+            items.push({ caption: e.querySelector('[data-field="caption"]').value, wide: e.querySelector('[data-field="wide"]').checked });
+        }); return items;
     }
 
     // --- Build dynamic lists ---
-    function buildDynamicLists() {
-        buildStatsList();
-        buildRoomsList();
-        buildServicesList();
-        buildDecouvrirList();
-        buildGalleryList();
-        buildSeasonsList();
-    }
+    function buildDynamicLists() { buildStatsList(); buildRoomsList(); buildServicesList(); buildDecouvrirList(); buildGalleryList(); buildSeasonsList(); }
 
     function buildStatsList() {
-        var container = document.getElementById('statsList');
-        container.innerHTML = '';
+        var c = document.getElementById('statsList'); c.innerHTML = '';
         (content.stats || []).forEach(function(s, i) {
-            container.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
+            c.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
                 '<input data-field="value" type="number" value="' + s.value + '" placeholder="Valeur">' +
                 '<input data-field="unit" value="' + esc(s.unit) + '" placeholder="Unité">' +
-                '<input data-field="label" value="' + esc(s.label) + '" placeholder="Label">' +
-                '</div></div>';
+                '<input data-field="label" value="' + esc(s.label) + '" placeholder="Label"></div></div>';
         });
     }
-
     function buildRoomsList() {
-        var container = document.getElementById('roomsList');
-        container.innerHTML = '';
+        var c = document.getElementById('roomsList'); c.innerHTML = '';
         (content.maison && content.maison.rooms || []).forEach(function(r, i) {
-            container.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
+            c.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
                 '<input data-field="name" value="' + esc(r.name) + '" placeholder="Nom">' +
-                '<textarea data-field="description" placeholder="Description">' + esc(r.description) + '</textarea>' +
-                '</div></div>';
+                '<textarea data-field="description" placeholder="Description">' + esc(r.description) + '</textarea></div></div>';
         });
     }
-
     function buildServicesList() {
-        var container = document.getElementById('servicesList');
-        container.innerHTML = '';
+        var c = document.getElementById('servicesList'); c.innerHTML = '';
         (content.services && content.services.items || []).forEach(function(s, i) {
-            container.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
+            c.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
                 '<input data-field="icon" value="' + esc(s.icon) + '" placeholder="Icône">' +
                 '<input data-field="title" value="' + esc(s.title) + '" placeholder="Titre">' +
-                '<textarea data-field="description" placeholder="Description">' + esc(s.description) + '</textarea>' +
-                '</div></div>';
+                '<textarea data-field="description" placeholder="Description">' + esc(s.description) + '</textarea></div></div>';
         });
     }
-
     function buildDecouvrirList() {
-        var container = document.getElementById('decouvrirList');
-        container.innerHTML = '';
-        (content.decouvrir && content.decouvrir.cards || []).forEach(function(c, i) {
-            container.innerHTML += '<div class="item-entry"><span class="item-number">' + esc(c.number) + '</span><div class="item-fields">' +
-                '<input data-field="number" value="' + esc(c.number) + '" placeholder="Numéro">' +
-                '<input data-field="title" value="' + esc(c.title) + '" placeholder="Titre">' +
-                '<textarea data-field="description" placeholder="Description">' + esc(c.description) + '</textarea>' +
-                '</div></div>';
+        var c = document.getElementById('decouvrirList'); c.innerHTML = '';
+        (content.decouvrir && content.decouvrir.cards || []).forEach(function(d, i) {
+            c.innerHTML += '<div class="item-entry"><span class="item-number">' + esc(d.number) + '</span><div class="item-fields">' +
+                '<input data-field="number" value="' + esc(d.number) + '" placeholder="Numéro">' +
+                '<input data-field="title" value="' + esc(d.title) + '" placeholder="Titre">' +
+                '<textarea data-field="description" placeholder="Description">' + esc(d.description) + '</textarea></div></div>';
         });
     }
-
     function buildGalleryList() {
-        var container = document.getElementById('galleryList');
-        container.innerHTML = '';
+        var c = document.getElementById('galleryList'); c.innerHTML = '';
         (content.gallery && content.gallery.items || []).forEach(function(g, i) {
-            container.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
+            c.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
                 '<input data-field="caption" value="' + esc(g.caption) + '" placeholder="Légende">' +
-                '<label style="font-size:.8rem;display:flex;align-items:center;gap:.5rem;margin-top:.25rem;text-transform:none;letter-spacing:0"><input data-field="wide" type="checkbox"' + (g.wide ? ' checked' : '') + '> Image large (2 colonnes)</label>' +
-                '</div></div>';
+                '<label style="font-size:.8rem;display:flex;align-items:center;gap:.5rem;margin-top:.25rem;text-transform:none;letter-spacing:0"><input data-field="wide" type="checkbox"' + (g.wide ? ' checked' : '') + '> Image large (2 colonnes)</label></div></div>';
         });
     }
-
     function buildSeasonsList() {
-        var container = document.getElementById('seasonsList');
-        container.innerHTML = '';
+        var c = document.getElementById('seasonsList'); c.innerHTML = '';
         (content.seasons && content.seasons.items || []).forEach(function(s, i) {
-            container.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
+            c.innerHTML += '<div class="item-entry"><span class="item-number">' + (i+1) + '</span><div class="item-fields">' +
                 '<input data-field="name" value="' + esc(s.name) + '" placeholder="Nom">' +
-                '<textarea data-field="description" placeholder="Description">' + esc(s.description) + '</textarea>' +
-                '</div></div>';
+                '<textarea data-field="description" placeholder="Description">' + esc(s.description) + '</textarea></div></div>';
         });
     }
 
     function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // --- Save section ---
+    // --- Save section (commits to GitHub) ---
     document.addEventListener('click', function(e) {
         if (!e.target.classList.contains('save-section')) return;
         var section = e.target.getAttribute('data-section');
         var data = collectSection(section);
         e.target.disabled = true;
         e.target.textContent = 'Sauvegarde...';
-        api('PUT', '/api/content/' + section, data).then(function(res) {
-            if (res.success) {
-                content[section] = data;
-                toast('Section "' + section + '" sauvegardée', 'success');
-            } else {
-                toast(res.error || 'Erreur', 'error');
-            }
-        }).catch(function() {
-            toast('Erreur réseau', 'error');
+
+        // Update content object then commit entire file
+        content[section] = data;
+        saveToGitHub(content).then(function() {
+            toast('Section "' + section + '" publiée sur le site !', 'success');
+        }).catch(function(err) {
+            toast('Erreur: ' + (err.message || 'échec de la sauvegarde'), 'error');
         }).finally(function() {
             e.target.disabled = false;
             e.target.textContent = 'Enregistrer';
@@ -701,45 +680,22 @@
             document.getElementById('panel-' + panel).classList.add('active');
             this.classList.add('active');
             document.getElementById('topbarTitle').textContent = titles[panel] || panel;
-            // Close mobile sidebar
             document.getElementById('sidebar').classList.remove('open');
         });
     });
 
-    // Mobile toggle
     document.getElementById('mobileToggle').addEventListener('click', function() {
         document.getElementById('sidebar').classList.toggle('open');
     });
 
     // --- Logout ---
     document.getElementById('logoutBtn').addEventListener('click', function() {
-        api('POST', '/api/auth/logout').then(function() {
-            window.location.href = '/admin/login';
-        });
+        sessionStorage.removeItem('gh_token');
+        sessionStorage.removeItem('gh_repo');
+        window.location.href = 'login.html';
     });
 
-    // --- Password change ---
-    document.getElementById('changePasswordBtn').addEventListener('click', function() {
-        var curr = document.getElementById('currentPassword').value;
-        var newP = document.getElementById('newPassword').value;
-        var conf = document.getElementById('confirmPassword').value;
-        if (!curr || !newP) { toast('Remplissez tous les champs', 'error'); return; }
-        if (newP !== conf) { toast('Les mots de passe ne correspondent pas', 'error'); return; }
-        if (newP.length < 8) { toast('Minimum 8 caractères', 'error'); return; }
-        api('POST', '/api/auth/change-password', { currentPassword: curr, newPassword: newP })
-            .then(function(res) {
-                if (res.success) {
-                    toast('Mot de passe modifié', 'success');
-                    document.getElementById('currentPassword').value = '';
-                    document.getElementById('newPassword').value = '';
-                    document.getElementById('confirmPassword').value = '';
-                } else {
-                    toast(res.error || 'Erreur', 'error');
-                }
-            });
-    });
-
-    // --- Image upload ---
+    // --- Image upload via GitHub API ---
     var uploadZone = document.getElementById('uploadZone');
     var fileInput = document.getElementById('fileInput');
 
@@ -754,48 +710,74 @@
 
     function uploadFiles(files) {
         Array.from(files).forEach(function(file) {
-            var fd = new FormData();
-            fd.append('image', file);
-            fetch('/api/images/upload', { method: 'POST', credentials: 'same-origin', body: fd })
-                .then(function(r) { return r.json(); })
-                .then(function(res) {
-                    if (res.success) { toast('Image uploadée', 'success'); loadImages(); }
-                    else toast(res.error, 'error');
+            if (file.size > 10 * 1024 * 1024) { toast('Fichier trop volumineux (max 10 MB)', 'error'); return; }
+            toast('Upload en cours...', '');
+            var reader = new FileReader();
+            reader.onload = function() {
+                var base64 = reader.result.split(',')[1];
+                var safeName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                ghFetch('/repos/' + GH_REPO + '/contents/images/' + safeName, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: 'Add: image ' + safeName,
+                        content: base64,
+                        branch: GH_BRANCH
+                    })
                 })
-                .catch(function() { toast('Erreur upload', 'error'); });
+                .then(function(r) { if (!r.ok) throw new Error('Upload échoué'); return r.json(); })
+                .then(function() { toast('Image "' + file.name + '" uploadée !', 'success'); loadImages(); })
+                .catch(function(err) { toast('Erreur upload: ' + err.message, 'error'); });
+            };
+            reader.readAsDataURL(file);
         });
     }
 
     function loadImages() {
-        api('GET', '/api/images').then(function(res) {
-            var grid = document.getElementById('imageGrid');
-            grid.innerHTML = '';
-            (res.images || []).forEach(function(img) {
-                var card = document.createElement('div');
-                card.className = 'image-card';
-                card.innerHTML = '<img src="' + img.url + '" alt="" loading="lazy">' +
-                    '<div class="image-actions"><button class="btn btn-danger btn-icon btn-sm" data-delete="' + img.filename + '" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button></div>' +
-                    '<div class="image-name">' + img.filename.substring(0, 20) + '...</div>';
-                card.addEventListener('click', function(e) {
-                    if (e.target.closest('[data-delete]')) {
-                        var fn = e.target.closest('[data-delete]').getAttribute('data-delete');
-                        if (confirm('Supprimer cette image ?')) {
-                            api('DELETE', '/api/images/' + fn).then(function() { toast('Image supprimée', 'success'); loadImages(); });
-                        }
-                    } else {
-                        navigator.clipboard.writeText(img.url).then(function() { toast('URL copiée !', 'success'); });
-                    }
-                });
-                grid.appendChild(card);
+        ghFetch('/repos/' + GH_REPO + '/contents/images?ref=' + GH_BRANCH)
+            .then(function(r) { if (!r.ok) throw new Error('no images'); return r.json(); })
+            .then(function(files) {
+                var grid = document.getElementById('imageGrid');
+                grid.innerHTML = '';
+                files.filter(function(f) { return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(f.name); })
+                    .forEach(function(img) {
+                        var card = document.createElement('div');
+                        card.className = 'image-card';
+                        var imgUrl = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + GH_BRANCH + '/images/' + img.name;
+                        card.innerHTML = '<img src="' + imgUrl + '" alt="" loading="lazy">' +
+                            '<div class="image-actions"><button class="btn btn-danger btn-icon btn-sm" data-delete="' + img.name + '" data-sha="' + img.sha + '" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button></div>' +
+                            '<div class="image-name">' + img.name + '</div>';
+                        card.addEventListener('click', function(e) {
+                            var delBtn = e.target.closest('[data-delete]');
+                            if (delBtn) {
+                                if (confirm('Supprimer ' + delBtn.getAttribute('data-delete') + ' ?')) {
+                                    ghFetch('/repos/' + GH_REPO + '/contents/images/' + delBtn.getAttribute('data-delete'), {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ message: 'Remove: image ' + delBtn.getAttribute('data-delete'), sha: delBtn.getAttribute('data-sha'), branch: GH_BRANCH })
+                                    }).then(function() { toast('Image supprimée', 'success'); loadImages(); });
+                                }
+                            } else {
+                                navigator.clipboard.writeText(imgUrl).then(function() { toast('URL copiée !', 'success'); });
+                            }
+                        });
+                        grid.appendChild(card);
+                    });
+            })
+            .catch(function() {
+                document.getElementById('imageGrid').innerHTML = '<p style="color:var(--text-light);font-size:.85rem;">Aucune image. Uploadez votre première image ci-dessus.</p>';
             });
-        });
     }
 
     // --- Init ---
-    api('GET', '/api/auth/me').then(function(res) {
-        document.getElementById('userInfo').textContent = res.user.username;
+    ghFetch('/user').then(function(r) {
+        if (!r.ok) throw new Error('auth');
+        return r.json();
+    }).then(function(user) {
+        document.getElementById('userInfo').textContent = user.login;
     }).catch(function() {
-        window.location.href = '/admin/login';
+        sessionStorage.removeItem('gh_token');
+        window.location.href = 'login.html';
     });
 
     loadContent();

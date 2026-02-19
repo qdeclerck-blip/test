@@ -24,9 +24,7 @@
     <nav class="nav" id="nav">
         <a href="#" class="nav-logo">Maison Yvoir</a>
         <button class="nav-toggle" id="navToggle" aria-label="Menu">
-            <span></span>
-            <span></span>
-            <span></span>
+            <span></span><span></span><span></span>
         </button>
         <ul class="nav-links" id="navLinks">
             <li><a href="#concept">Concept</a></li>
@@ -40,21 +38,17 @@
 
     <!-- Hero Section -->
     <header class="hero" id="hero">
-        <div class="hero-bg">
-            <div class="hero-gradient"></div>
-        </div>
+        <div class="hero-bg"><div class="hero-gradient"></div></div>
         <div class="hero-content">
-            <p class="hero-label">Yvoir — Vallée de la Meuse — Belgique</p>
+            <p class="hero-label" id="heroLabel"></p>
             <h1 class="hero-title">
-                <span class="hero-title-line">L'art de</span>
-                <span class="hero-title-line hero-title-italic">vivre autrement</span>
+                <span class="hero-title-line" id="heroLine1"></span>
+                <span class="hero-title-line hero-title-italic" id="heroLine2"></span>
             </h1>
-            <p class="hero-subtitle">Une maison d'exception où le confort d'un foyer rencontre l'élégance d'un hôtel, au c&oelig;ur de la nature wallonne.</p>
+            <p class="hero-subtitle" id="heroSubtitle"></p>
             <a href="#concept" class="hero-scroll">
                 <span>Découvrir</span>
-                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                    <path d="M12 5v14M5 12l7 7 7-7"/>
-                </svg>
+                <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M12 5v14M5 12l7 7 7-7"/></svg>
             </a>
         </div>
     </header>
@@ -64,29 +58,18 @@
         <div class="container">
             <div class="concept-grid">
                 <div class="concept-text">
-                    <span class="section-label">Notre Philosophie</span>
-                    <h2 class="section-title">La Maison<br><em>Hôtelière</em></h2>
-                    <p class="concept-description">
-                        Nous ne listons pas des maisons — nous créons des expériences.
-                        Maison Yvoir incarne une vision où chaque détail est pensé pour
-                        offrir le meilleur de deux mondes : la chaleur et la convivialité
-                        d'une maison de vacances, avec le service et le savoir-faire
-                        des hôtels les plus inspirants.
-                    </p>
-                    <p class="concept-description">
-                        Nichée dans la vallée de la Meuse, notre maison est un refuge
-                        où le temps s'arrête, où chaque saison révèle une nouvelle facette
-                        de la beauté wallonne.
-                    </p>
+                    <span class="section-label" id="conceptLabel"></span>
+                    <h2 class="section-title" id="conceptTitle"></h2>
+                    <div id="conceptParagraphs"></div>
                 </div>
                 <div class="concept-visual">
                     <div class="concept-image concept-image-1">
                         <div class="concept-image-inner" style="background: linear-gradient(135deg, #2d3a2e 0%, #4a5d4c 100%);"></div>
-                        <span class="concept-image-caption">La terrasse au lever du soleil</span>
+                        <span class="concept-image-caption" id="conceptCaption1"></span>
                     </div>
                     <div class="concept-image concept-image-2">
                         <div class="concept-image-inner" style="background: linear-gradient(135deg, #5c4a3a 0%, #8b7355 100%);"></div>
-                        <span class="concept-image-caption">Vue sur la Meuse</span>
+                        <span class="concept-image-caption" id="conceptCaption2"></span>
                     </div>
                 </div>
             </div>
@@ -96,308 +79,63 @@
     <!-- Stats Band -->
     <section class="stats">
         <div class="container">
-            <div class="stats-grid">
-                <div class="stat">
-                    <span class="stat-number" data-target="250">0</span>
-                    <span class="stat-unit">m²</span>
-                    <span class="stat-label">d'espace de vie</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-number" data-target="4">0</span>
-                    <span class="stat-unit">chambres</span>
-                    <span class="stat-label">pour 8 voyageurs</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-number" data-target="2000">0</span>
-                    <span class="stat-unit">m²</span>
-                    <span class="stat-label">de jardin privé</span>
-                </div>
-                <div class="stat">
-                    <span class="stat-number" data-target="5">0</span>
-                    <span class="stat-unit">min</span>
-                    <span class="stat-label">de la Meuse à pied</span>
-                </div>
-            </div>
+            <div class="stats-grid" id="statsGrid"></div>
         </div>
     </section>
 
     <!-- La Maison Section -->
     <section class="section maison" id="maison">
         <div class="container">
-            <span class="section-label">La Propriété</span>
-            <h2 class="section-title">Un écrin de<br><em>sérénité</em></h2>
-            <p class="maison-intro">
-                Chaque pièce a été pensée pour créer une harmonie entre modernité
-                et authenticité. Les matériaux nobles — pierre locale, bois de chêne,
-                lin naturel — dialoguent avec un design contemporain épuré.
-            </p>
+            <span class="section-label" id="maisonLabel"></span>
+            <h2 class="section-title" id="maisonTitle"></h2>
+            <p class="maison-intro" id="maisonIntro"></p>
         </div>
-        <div class="maison-rooms">
-            <div class="room">
-                <div class="room-image" style="background: linear-gradient(135deg, #3a3a3a 0%, #5a5a5a 100%);">
-                    <div class="room-overlay">
-                        <h3>Le Salon</h3>
-                        <p>Un espace généreux avec cheminée en pierre, baigné de lumière naturelle et ouvrant sur le jardin.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="room">
-                <div class="room-image" style="background: linear-gradient(135deg, #4a4035 0%, #6b5d50 100%);">
-                    <div class="room-overlay">
-                        <h3>La Cuisine</h3>
-                        <p>Entièrement équipée, elle marie l'élégance du marbre à la fonctionnalité d'un espace de chef.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="room">
-                <div class="room-image" style="background: linear-gradient(135deg, #2d3a35 0%, #4a5d55 100%);">
-                    <div class="room-overlay">
-                        <h3>Les Chambres</h3>
-                        <p>Quatre suites habillées de lin, chacune avec sa propre identité et vue sur la nature environnante.</p>
-                    </div>
-                </div>
-            </div>
-            <div class="room">
-                <div class="room-image" style="background: linear-gradient(135deg, #35303a 0%, #554d5d 100%);">
-                    <div class="room-overlay">
-                        <h3>Le Spa</h3>
-                        <p>Sauna, bain nordique en terrasse et espace détente pour une parenthèse bien-être absolue.</p>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <div class="maison-rooms" id="maisonRooms"></div>
     </section>
 
     <!-- Services Section -->
     <section class="section services" id="services">
         <div class="container">
             <div class="services-header">
-                <span class="section-label">L'Expérience</span>
-                <h2 class="section-title">Le service d'un hôtel,<br><em>la liberté d'une maison</em></h2>
+                <span class="section-label" id="servicesLabel"></span>
+                <h2 class="section-title" id="servicesTitle"></h2>
             </div>
-            <div class="services-grid">
-                <div class="service">
-                    <div class="service-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M24 4v16M16 12h16M8 24h32v4c0 8.837-7.163 16-16 16S8 36.837 8 28v-4z"/>
-                        </svg>
-                    </div>
-                    <h3 class="service-title">Petit-déjeuner frais</h3>
-                    <p class="service-desc">Chaque matin, un panier de produits locaux et artisanaux vous attend : pain de campagne, confitures maison, fromages de la région.</p>
-                </div>
-                <div class="service">
-                    <div class="service-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <rect x="6" y="14" width="36" height="28" rx="2"/>
-                            <path d="M16 14V8a8 8 0 0116 0v6"/>
-                            <circle cx="24" cy="28" r="4"/>
-                        </svg>
-                    </div>
-                    <h3 class="service-title">Arrivée sans stress</h3>
-                    <p class="service-desc">Accès sans clé, instructions claires, maison prête à vivre. Pas de check-in fastidieux, juste le plaisir d'arriver.</p>
-                </div>
-                <div class="service">
-                    <div class="service-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M4 40h40M8 40V20l16-12 16 12v20"/>
-                            <rect x="18" y="28" width="12" height="12"/>
-                        </svg>
-                    </div>
-                    <h3 class="service-title">Ménage quotidien</h3>
-                    <p class="service-desc">Un service de ménage discret pour que vous n'ayez qu'à profiter de votre séjour, sans la moindre contrainte.</p>
-                </div>
-                <div class="service">
-                    <div class="service-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <circle cx="24" cy="24" r="20"/>
-                            <path d="M24 12v12l8 8"/>
-                        </svg>
-                    </div>
-                    <h3 class="service-title">Conciergerie 24/7</h3>
-                    <p class="service-desc">Réservation de restaurant, activités, transport — notre équipe est disponible à tout moment pour répondre à vos envies.</p>
-                </div>
-                <div class="service">
-                    <div class="service-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M4 24c0-11.046 8.954-20 20-20s20 8.954 20 20"/>
-                            <path d="M12 24a12 12 0 0124 0"/>
-                            <circle cx="24" cy="24" r="4"/>
-                            <path d="M24 28v16"/>
-                        </svg>
-                    </div>
-                    <h3 class="service-title">Wi-Fi haut débit</h3>
-                    <p class="service-desc">Connexion fibre optique dans toute la maison. Idéal pour le travail à distance ou le streaming en soirée.</p>
-                </div>
-                <div class="service">
-                    <div class="service-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M24 4l6 12 12 2-8 8 2 12-12-6-12 6 2-12-8-8 12-2z"/>
-                        </svg>
-                    </div>
-                    <h3 class="service-title">Expériences sur mesure</h3>
-                    <p class="service-desc">Dégustation à la Brasserie du Bocq, visite de Maredsous, kayak sur la Lesse — nous composons votre séjour idéal.</p>
-                </div>
-            </div>
+            <div class="services-grid" id="servicesGrid"></div>
         </div>
     </section>
 
     <!-- Discover Yvoir Section -->
     <section class="section decouvrir" id="decouvrir">
         <div class="container">
-            <span class="section-label">La Destination</span>
-            <h2 class="section-title">Yvoir, joyau de<br><em>la Meuse</em></h2>
-            <p class="decouvrir-intro">
-                Au c&oelig;ur de la province de Namur, Yvoir est une invitation permanente
-                à la contemplation et à l'aventure. La vallée de la Meuse dévoile ici
-                ses plus beaux paysages, entre forêts ancestrales, villages de pierre
-                et eaux vives.
-            </p>
+            <span class="section-label" id="decouvrirLabel"></span>
+            <h2 class="section-title" id="decouvrirTitle"></h2>
+            <p class="decouvrir-intro" id="decouvrirIntro"></p>
         </div>
-        <div class="decouvrir-grid">
-            <div class="decouvrir-card">
-                <div class="decouvrir-card-image" style="background: linear-gradient(135deg, #3d4a3a 0%, #5d7055 100%);">
-                    <div class="decouvrir-card-number">01</div>
-                </div>
-                <div class="decouvrir-card-content">
-                    <h3>Château de Poilvache</h3>
-                    <p>Les ruines majestueuses de la plus grande forteresse médiévale de la vallée de la Meuse, datant des XIIIe et XIVe siècles. Un panorama à couper le souffle.</p>
-                </div>
-            </div>
-            <div class="decouvrir-card">
-                <div class="decouvrir-card-image" style="background: linear-gradient(135deg, #4a3d2a 0%, #70603a 100%);">
-                    <div class="decouvrir-card-number">02</div>
-                </div>
-                <div class="decouvrir-card-content">
-                    <h3>Abbaye de Maredsous</h3>
-                    <p>L'abbaye bénédictine perpétue une tradition d'hospitalité dans un cadre naturel exceptionnel. Fromages, bières et sérénité au programme.</p>
-                </div>
-            </div>
-            <div class="decouvrir-card">
-                <div class="decouvrir-card-image" style="background: linear-gradient(135deg, #2a3d4a 0%, #3a5a70 100%);">
-                    <div class="decouvrir-card-number">03</div>
-                </div>
-                <div class="decouvrir-card-content">
-                    <h3>L'Île d'Yvoir</h3>
-                    <p>Sports nautiques, ski nautique, wakeboard et espaces de détente — une oasis de loisirs sur la Meuse pour toute la famille.</p>
-                </div>
-            </div>
-            <div class="decouvrir-card">
-                <div class="decouvrir-card-image" style="background: linear-gradient(135deg, #3a2d3d 0%, #5a4560 100%);">
-                    <div class="decouvrir-card-number">04</div>
-                </div>
-                <div class="decouvrir-card-content">
-                    <h3>Vallée du Bocq</h3>
-                    <p>38 sentiers de randonnée à travers forêts et prairies. La Brasserie du Bocq, fondée en 1858, ponctue le parcours d'une halte gourmande.</p>
-                </div>
-            </div>
-            <div class="decouvrir-card">
-                <div class="decouvrir-card-image" style="background: linear-gradient(135deg, #4a4a3a 0%, #6a6a50 100%);">
-                    <div class="decouvrir-card-number">05</div>
-                </div>
-                <div class="decouvrir-card-content">
-                    <h3>Kayak sur la Lesse</h3>
-                    <p>Une descente inoubliable entre falaises calcaires et forêts verdoyantes. L'aventure nature par excellence en Wallonie.</p>
-                </div>
-            </div>
-            <div class="decouvrir-card">
-                <div class="decouvrir-card-image" style="background: linear-gradient(135deg, #3a4a40 0%, #506a58 100%);">
-                    <div class="decouvrir-card-number">06</div>
-                </div>
-                <div class="decouvrir-card-content">
-                    <h3>Villages de charme</h3>
-                    <p>Spontin et son château féodal, Godinne et son prieuré, Purnode et sa brasserie — chaque village raconte une histoire unique.</p>
-                </div>
-            </div>
-        </div>
+        <div class="decouvrir-grid" id="decouvrirGrid"></div>
     </section>
 
     <!-- Gallery Section -->
     <section class="section galerie" id="galerie">
         <div class="container">
-            <span class="section-label">Ambiances</span>
-            <h2 class="section-title">Chaque saison,<br><em>une nouvelle lumière</em></h2>
+            <span class="section-label" id="galleryLabel"></span>
+            <h2 class="section-title" id="galleryTitle"></h2>
         </div>
-        <div class="gallery-grid">
-            <div class="gallery-item gallery-item-wide" style="background: linear-gradient(135deg, #3a4a3a 0%, #6a7a6a 100%);">
-                <span class="gallery-caption">Le jardin au printemps</span>
-            </div>
-            <div class="gallery-item" style="background: linear-gradient(135deg, #5a4a3a 0%, #8a7a6a 100%);">
-                <span class="gallery-caption">Salon & cheminée</span>
-            </div>
-            <div class="gallery-item" style="background: linear-gradient(135deg, #3a3a4a 0%, #6a6a7a 100%);">
-                <span class="gallery-caption">Suite principale</span>
-            </div>
-            <div class="gallery-item" style="background: linear-gradient(135deg, #4a3a3a 0%, #7a6a6a 100%);">
-                <span class="gallery-caption">Cuisine ouverte</span>
-            </div>
-            <div class="gallery-item gallery-item-wide" style="background: linear-gradient(135deg, #2a3a4a 0%, #5a6a7a 100%);">
-                <span class="gallery-caption">Vue sur la Meuse depuis la terrasse</span>
-            </div>
-            <div class="gallery-item" style="background: linear-gradient(135deg, #3a4a4a 0%, #6a7a7a 100%);">
-                <span class="gallery-caption">Le bain nordique</span>
-            </div>
-            <div class="gallery-item" style="background: linear-gradient(135deg, #4a4a3a 0%, #7a7a6a 100%);">
-                <span class="gallery-caption">Petit-déjeuner local</span>
-            </div>
-        </div>
+        <div class="gallery-grid" id="galleryGrid"></div>
     </section>
 
-    <!-- Testimonial / Quote -->
+    <!-- Quote -->
     <section class="section quote-section">
         <div class="container">
-            <blockquote class="quote">
-                <p>&laquo; On ne vient pas simplement séjourner à Yvoir. On vient y vivre un moment hors du temps, bercé par le murmure de la Meuse et la douceur de la campagne wallonne. &raquo;</p>
-            </blockquote>
+            <blockquote class="quote"><p id="quoteText"></p></blockquote>
         </div>
     </section>
 
     <!-- Seasons Section -->
     <section class="section seasons">
         <div class="container">
-            <span class="section-label">Toute l'année</span>
-            <h2 class="section-title">Un refuge pour<br><em>chaque saison</em></h2>
-            <div class="seasons-grid">
-                <div class="season">
-                    <div class="season-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M24 8c-2 4-8 8-8 14a8 8 0 0016 0c0-6-6-10-8-14z"/>
-                            <path d="M24 28v8M20 32h8"/>
-                        </svg>
-                    </div>
-                    <h3>Printemps</h3>
-                    <p>Les jardins s'éveillent, les sentiers se parent de fleurs sauvages. Idéal pour la randonnée et les visites de villages.</p>
-                </div>
-                <div class="season">
-                    <div class="season-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <circle cx="24" cy="24" r="8"/>
-                            <path d="M24 4v6M24 38v6M4 24h6M38 24h6M9.86 9.86l4.24 4.24M33.9 33.9l4.24 4.24M9.86 38.14l4.24-4.24M33.9 14.1l4.24-4.24"/>
-                        </svg>
-                    </div>
-                    <h3>Été</h3>
-                    <p>L'Île d'Yvoir, le kayak sur la Lesse, les terrasses au bord de la Meuse. L'été wallon dans toute sa splendeur.</p>
-                </div>
-                <div class="season">
-                    <div class="season-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M12 8c0 8 6 12 8 20h8c2-8 8-12 8-20"/>
-                            <path d="M18 36h12M20 42h8"/>
-                        </svg>
-                    </div>
-                    <h3>Automne</h3>
-                    <p>Un festival de couleurs dans la vallée du Bocq. Dégustations de bières artisanales et soirées au coin du feu.</p>
-                </div>
-                <div class="season">
-                    <div class="season-icon">
-                        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="1.5">
-                            <path d="M24 4v4M24 40v4M4 24h4M40 24h4M10 10l3 3M35 35l3 3M10 38l3-3M35 13l3-3"/>
-                            <circle cx="24" cy="24" r="8" stroke-dasharray="4 4"/>
-                        </svg>
-                    </div>
-                    <h3>Hiver</h3>
-                    <p>Le silence de la vallée enneigée, le sauna, le bain nordique sous les étoiles. Une parenthèse de quiétude absolue.</p>
-                </div>
-            </div>
+            <span class="section-label" id="seasonsLabel"></span>
+            <h2 class="section-title" id="seasonsTitle"></h2>
+            <div class="seasons-grid" id="seasonsGrid"></div>
         </div>
     </section>
 
@@ -406,78 +144,42 @@
         <div class="container">
             <div class="contact-grid">
                 <div class="contact-info">
-                    <span class="section-label">Réservation</span>
-                    <h2 class="section-title">Votre prochain<br><em>séjour commence ici</em></h2>
-                    <p class="contact-description">
-                        Que ce soit pour un week-end de déconnexion ou un long séjour
-                        en famille, nous sommes là pour composer votre expérience idéale
-                        à Yvoir.
-                    </p>
+                    <span class="section-label" id="contactLabel"></span>
+                    <h2 class="section-title" id="contactTitle"></h2>
+                    <p class="contact-description" id="contactDescription"></p>
                     <div class="contact-details">
                         <div class="contact-detail">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                                <path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
-                            </svg>
-                            <span>bonjour@maison-yvoir.be</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/></svg>
+                            <span id="contactEmail"></span>
                         </div>
                         <div class="contact-detail">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                                <path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/>
-                            </svg>
-                            <span>+32 (0)82 00 00 00</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M22 16.92v3a2 2 0 01-2.18 2 19.79 19.79 0 01-8.63-3.07 19.5 19.5 0 01-6-6 19.79 19.79 0 01-3.07-8.67A2 2 0 014.11 2h3a2 2 0 012 1.72c.127.96.361 1.903.7 2.81a2 2 0 01-.45 2.11L8.09 9.91a16 16 0 006 6l1.27-1.27a2 2 0 012.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0122 16.92z"/></svg>
+                            <span id="contactPhone"></span>
                         </div>
                         <div class="contact-detail">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20">
-                                <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/>
-                                <circle cx="12" cy="10" r="3"/>
-                            </svg>
-                            <span>Yvoir, Province de Namur, Belgique</span>
+                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="20" height="20"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0118 0z"/><circle cx="12" cy="10" r="3"/></svg>
+                            <span id="contactAddress"></span>
                         </div>
                     </div>
                 </div>
                 <div class="contact-form-wrapper">
                     <form class="contact-form" id="contactForm">
                         <div class="form-row">
-                            <div class="form-group">
-                                <label for="name">Nom</label>
-                                <input type="text" id="name" name="name" required placeholder="Votre nom">
-                            </div>
-                            <div class="form-group">
-                                <label for="email">Email</label>
-                                <input type="email" id="email" name="email" required placeholder="votre@email.com">
-                            </div>
+                            <div class="form-group"><label for="name">Nom</label><input type="text" id="name" name="name" required placeholder="Votre nom"></div>
+                            <div class="form-group"><label for="email">Email</label><input type="email" id="email" name="email" required placeholder="votre@email.com"></div>
                         </div>
                         <div class="form-row">
-                            <div class="form-group">
-                                <label for="checkin">Arrivée</label>
-                                <input type="date" id="checkin" name="checkin" required>
-                            </div>
-                            <div class="form-group">
-                                <label for="checkout">Départ</label>
-                                <input type="date" id="checkout" name="checkout" required>
-                            </div>
+                            <div class="form-group"><label for="checkin">Arrivée</label><input type="date" id="checkin" name="checkin" required></div>
+                            <div class="form-group"><label for="checkout">Départ</label><input type="date" id="checkout" name="checkout" required></div>
                         </div>
                         <div class="form-group">
                             <label for="guests">Nombre de voyageurs</label>
-                            <select id="guests" name="guests">
-                                <option value="2">2 voyageurs</option>
-                                <option value="3">3 voyageurs</option>
-                                <option value="4">4 voyageurs</option>
-                                <option value="5">5 voyageurs</option>
-                                <option value="6">6 voyageurs</option>
-                                <option value="7">7 voyageurs</option>
-                                <option value="8">8 voyageurs</option>
-                            </select>
+                            <select id="guests" name="guests"><option value="2">2 voyageurs</option><option value="3">3 voyageurs</option><option value="4">4 voyageurs</option><option value="5">5 voyageurs</option><option value="6">6 voyageurs</option><option value="7">7 voyageurs</option><option value="8">8 voyageurs</option></select>
                         </div>
-                        <div class="form-group">
-                            <label for="message">Message</label>
-                            <textarea id="message" name="message" rows="4" placeholder="Dites-nous en plus sur votre séjour idéal..."></textarea>
-                        </div>
+                        <div class="form-group"><label for="message">Message</label><textarea id="message" name="message" rows="4" placeholder="Dites-nous en plus sur votre séjour idéal..."></textarea></div>
                         <button type="submit" class="form-submit">
                             <span>Envoyer ma demande</span>
-                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
-                                <path d="M5 12h14M12 5l7 7-7 7"/>
-                            </svg>
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
                         </button>
                     </form>
                 </div>
@@ -491,47 +193,25 @@
             <div class="footer-grid">
                 <div class="footer-brand">
                     <span class="footer-logo">Maison Yvoir</span>
-                    <p>La Maison Hôtelière de la Vallée de la Meuse.</p>
+                    <p id="footerTagline"></p>
                 </div>
                 <div class="footer-links">
                     <h4>Navigation</h4>
-                    <ul>
-                        <li><a href="#concept">Concept</a></li>
-                        <li><a href="#maison">La Maison</a></li>
-                        <li><a href="#services">Services</a></li>
-                        <li><a href="#decouvrir">Découvrir Yvoir</a></li>
-                        <li><a href="#galerie">Galerie</a></li>
-                    </ul>
+                    <ul><li><a href="#concept">Concept</a></li><li><a href="#maison">La Maison</a></li><li><a href="#services">Services</a></li><li><a href="#decouvrir">Découvrir Yvoir</a></li><li><a href="#galerie">Galerie</a></li></ul>
                 </div>
                 <div class="footer-links">
                     <h4>Informations</h4>
-                    <ul>
-                        <li><a href="#">Conditions générales</a></li>
-                        <li><a href="#">Politique de confidentialité</a></li>
-                        <li><a href="#">FAQ</a></li>
-                    </ul>
+                    <ul><li><a href="#">Conditions générales</a></li><li><a href="#">Politique de confidentialité</a></li><li><a href="#">FAQ</a></li></ul>
                 </div>
                 <div class="footer-social">
                     <h4>Suivez-nous</h4>
                     <div class="social-links">
-                        <a href="#" aria-label="Instagram">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
-                                <rect x="2" y="2" width="20" height="20" rx="5"/>
-                                <circle cx="12" cy="12" r="5"/>
-                                <circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/>
-                            </svg>
-                        </a>
-                        <a href="#" aria-label="Facebook">
-                            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24">
-                                <path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/>
-                            </svg>
-                        </a>
+                        <a href="#" aria-label="Instagram"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><rect x="2" y="2" width="20" height="20" rx="5"/><circle cx="12" cy="12" r="5"/><circle cx="17.5" cy="6.5" r="1.5" fill="currentColor" stroke="none"/></svg></a>
+                        <a href="#" aria-label="Facebook"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="24" height="24"><path d="M18 2h-3a5 5 0 00-5 5v3H7v4h3v8h4v-8h3l1-4h-4V7a1 1 0 011-1h3z"/></svg></a>
                     </div>
                 </div>
             </div>
-            <div class="footer-bottom">
-                <p>&copy; 2026 Maison Yvoir. Tous droits réservés.</p>
-            </div>
+            <div class="footer-bottom"><p>&copy; 2026 Maison Yvoir. Tous droits réservés.</p></div>
         </div>
     </footer>
 
