@@ -1,0 +1,667 @@
+/* ========================================
+   VoiceNotes - Modern Voice Notes App
+   ======================================== */
+
+:root {
+    --color-bg: #0f0f13;
+    --color-surface: #1a1a24;
+    --color-surface-hover: #22223a;
+    --color-border: #2a2a3e;
+    --color-text: #e8e8f0;
+    --color-text-secondary: #8888a8;
+    --color-primary: #6c5ce7;
+    --color-primary-glow: rgba(108, 92, 231, 0.3);
+    --color-primary-light: #a29bfe;
+    --color-danger: #ff6b6b;
+    --color-danger-hover: #ee5a5a;
+    --color-success: #51cf66;
+    --color-recording: #ff4757;
+    --color-recording-glow: rgba(255, 71, 87, 0.4);
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 16px;
+    --radius-xl: 24px;
+    --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.2);
+    --shadow-md: 0 4px 20px rgba(0, 0, 0, 0.3);
+    --shadow-lg: 0 8px 40px rgba(0, 0, 0, 0.4);
+    --transition: 0.2s ease;
+}
+
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+    background: var(--color-bg);
+    color: var(--color-text);
+    min-height: 100vh;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+/* ========== Header ========== */
+.header {
+    background: linear-gradient(135deg, var(--color-surface) 0%, #1e1e35 100%);
+    border-bottom: 1px solid var(--color-border);
+    padding: 2rem 1.5rem;
+}
+
+.header-content {
+    max-width: 640px;
+    margin: 0 auto;
+}
+
+.logo {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+}
+
+.logo-icon {
+    width: 32px;
+    height: 32px;
+    color: var(--color-primary-light);
+    filter: drop-shadow(0 0 8px var(--color-primary-glow));
+}
+
+.logo h1 {
+    font-size: 1.5rem;
+    font-weight: 700;
+    background: linear-gradient(135deg, var(--color-primary-light), var(--color-primary));
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+    margin-top: 0.25rem;
+    color: var(--color-text-secondary);
+    font-size: 0.875rem;
+    padding-left: 44px;
+}
+
+/* ========== Main ========== */
+.main {
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 1.5rem;
+}
+
+/* ========== Recorder ========== */
+.recorder-section {
+    margin-bottom: 2rem;
+}
+
+.recorder-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    text-align: center;
+    transition: border-color var(--transition), box-shadow var(--transition);
+}
+
+.recorder-card.recording {
+    border-color: var(--color-recording);
+    box-shadow: 0 0 30px var(--color-recording-glow);
+}
+
+.visualizer-container {
+    margin-bottom: 1rem;
+    border-radius: var(--radius-sm);
+    overflow: hidden;
+    height: 80px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+#visualizer {
+    width: 100%;
+    height: 80px;
+    display: block;
+}
+
+.recording-time {
+    font-size: 2rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+    color: var(--color-text-secondary);
+    margin-bottom: 1.25rem;
+    transition: color var(--transition);
+}
+
+.recorder-card.recording .recording-time {
+    color: var(--color-recording);
+}
+
+.recorder-controls {
+    display: flex;
+    justify-content: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.btn-record {
+    width: 72px;
+    height: 72px;
+    border-radius: 50%;
+    border: 3px solid var(--color-primary);
+    background: transparent;
+    color: var(--color-primary-light);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    position: relative;
+}
+
+.btn-record:hover {
+    background: var(--color-primary-glow);
+    transform: scale(1.05);
+}
+
+.btn-record:active {
+    transform: scale(0.95);
+}
+
+.btn-record .icon-mic {
+    width: 28px;
+    height: 28px;
+}
+
+.btn-record .icon-stop {
+    width: 24px;
+    height: 24px;
+    display: none;
+}
+
+.btn-record.recording {
+    border-color: var(--color-recording);
+    background: var(--color-recording-glow);
+    color: var(--color-recording);
+    animation: pulse-recording 1.5s ease-in-out infinite;
+}
+
+.btn-record.recording .icon-mic {
+    display: none;
+}
+
+.btn-record.recording .icon-stop {
+    display: block;
+}
+
+@keyframes pulse-recording {
+    0%, 100% {
+        box-shadow: 0 0 0 0 var(--color-recording-glow);
+    }
+    50% {
+        box-shadow: 0 0 0 12px transparent;
+    }
+}
+
+.recorder-hint {
+    font-size: 0.813rem;
+    color: var(--color-text-secondary);
+}
+
+/* ========== Modal ========== */
+.modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.7);
+    backdrop-filter: blur(4px);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 100;
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+    padding: 1rem;
+}
+
+.modal-overlay.active {
+    opacity: 1;
+    visibility: visible;
+}
+
+.modal {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 2rem;
+    width: 100%;
+    max-width: 440px;
+    transform: translateY(20px) scale(0.95);
+    transition: transform 0.3s ease;
+}
+
+.modal-overlay.active .modal {
+    transform: translateY(0) scale(1);
+}
+
+.modal h2 {
+    font-size: 1.25rem;
+    margin-bottom: 1.25rem;
+}
+
+.modal-preview {
+    margin-bottom: 1.25rem;
+}
+
+.modal-preview audio {
+    width: 100%;
+    height: 44px;
+    border-radius: var(--radius-sm);
+    outline: none;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-group label {
+    display: block;
+    font-size: 0.813rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.5rem;
+}
+
+.form-group input {
+    width: 100%;
+    padding: 0.75rem 1rem;
+    background: var(--color-bg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-sm);
+    color: var(--color-text);
+    font-size: 0.938rem;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.form-group input:focus {
+    border-color: var(--color-primary);
+}
+
+.form-group input::placeholder {
+    color: var(--color-text-secondary);
+}
+
+.modal-actions {
+    display: flex;
+    gap: 0.75rem;
+    justify-content: flex-end;
+}
+
+.btn {
+    padding: 0.625rem 1.25rem;
+    border-radius: var(--radius-sm);
+    border: none;
+    font-size: 0.875rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all var(--transition);
+}
+
+.btn-primary {
+    background: var(--color-primary);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: #7c6ef0;
+    box-shadow: 0 4px 12px var(--color-primary-glow);
+}
+
+.btn-secondary {
+    background: transparent;
+    color: var(--color-text-secondary);
+    border: 1px solid var(--color-border);
+}
+
+.btn-secondary:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+/* ========== Notes Section ========== */
+.notes-section {
+    margin-bottom: 2rem;
+}
+
+.notes-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+}
+
+.notes-header h2 {
+    font-size: 1.125rem;
+    font-weight: 600;
+}
+
+.notes-count {
+    font-size: 0.813rem;
+    color: var(--color-text-secondary);
+    background: var(--color-surface);
+    padding: 0.25rem 0.75rem;
+    border-radius: 100px;
+    border: 1px solid var(--color-border);
+}
+
+.search-bar {
+    position: relative;
+    margin-bottom: 1rem;
+}
+
+.search-icon {
+    position: absolute;
+    left: 0.875rem;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 18px;
+    height: 18px;
+    color: var(--color-text-secondary);
+    pointer-events: none;
+}
+
+.search-bar input {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 2.75rem;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    color: var(--color-text);
+    font-size: 0.875rem;
+    outline: none;
+    transition: border-color var(--transition);
+}
+
+.search-bar input:focus {
+    border-color: var(--color-primary);
+}
+
+.search-bar input::placeholder {
+    color: var(--color-text-secondary);
+}
+
+/* ========== Note Card ========== */
+.notes-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.note-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    padding: 1rem 1.25rem;
+    transition: all var(--transition);
+    animation: fadeIn 0.3s ease;
+}
+
+.note-card:hover {
+    border-color: var(--color-primary);
+    box-shadow: var(--shadow-sm);
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(8px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.note-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 0.75rem;
+}
+
+.note-info {
+    flex: 1;
+    min-width: 0;
+}
+
+.note-title {
+    font-size: 0.938rem;
+    font-weight: 600;
+    margin-bottom: 0.25rem;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.note-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    font-size: 0.75rem;
+    color: var(--color-text-secondary);
+}
+
+.note-meta svg {
+    width: 12px;
+    height: 12px;
+    flex-shrink: 0;
+}
+
+.note-meta-item {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.note-actions {
+    display: flex;
+    gap: 0.25rem;
+    flex-shrink: 0;
+    margin-left: 0.75rem;
+}
+
+.btn-icon {
+    width: 32px;
+    height: 32px;
+    border-radius: var(--radius-sm);
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+}
+
+.btn-icon:hover {
+    background: var(--color-surface-hover);
+    color: var(--color-text);
+}
+
+.btn-icon.danger:hover {
+    background: rgba(255, 107, 107, 0.15);
+    color: var(--color-danger);
+}
+
+.btn-icon svg {
+    width: 16px;
+    height: 16px;
+}
+
+.note-player {
+    margin-top: 0.5rem;
+}
+
+.note-player audio {
+    width: 100%;
+    height: 36px;
+    border-radius: var(--radius-sm);
+}
+
+/* Custom audio waveform player */
+.custom-player {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.5rem 0;
+}
+
+.btn-play {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    border: none;
+    background: var(--color-primary);
+    color: white;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all var(--transition);
+    flex-shrink: 0;
+}
+
+.btn-play:hover {
+    background: #7c6ef0;
+    transform: scale(1.05);
+}
+
+.btn-play svg {
+    width: 16px;
+    height: 16px;
+}
+
+.player-progress {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.375rem;
+}
+
+.progress-bar {
+    width: 100%;
+    height: 4px;
+    background: var(--color-border);
+    border-radius: 100px;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+}
+
+.progress-fill {
+    height: 100%;
+    background: var(--color-primary);
+    border-radius: 100px;
+    width: 0%;
+    transition: width 0.1s linear;
+}
+
+.player-time {
+    font-size: 0.688rem;
+    color: var(--color-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ========== Empty State ========== */
+.empty-state {
+    text-align: center;
+    padding: 3rem 1rem;
+    display: none;
+}
+
+.empty-state.visible {
+    display: block;
+}
+
+.empty-state svg {
+    width: 48px;
+    height: 48px;
+    color: var(--color-text-secondary);
+    opacity: 0.4;
+    margin-bottom: 1rem;
+}
+
+.empty-state p {
+    font-size: 1rem;
+    font-weight: 500;
+    color: var(--color-text-secondary);
+    margin-bottom: 0.25rem;
+}
+
+.empty-state span {
+    font-size: 0.813rem;
+    color: var(--color-text-secondary);
+    opacity: 0.7;
+}
+
+/* ========== Footer ========== */
+.footer {
+    text-align: center;
+    padding: 1.5rem;
+    color: var(--color-text-secondary);
+    font-size: 0.75rem;
+    opacity: 0.6;
+}
+
+/* ========== Responsive ========== */
+@media (max-width: 480px) {
+    .header {
+        padding: 1.5rem 1rem;
+    }
+
+    .main {
+        padding: 1rem;
+    }
+
+    .recorder-card {
+        padding: 1.5rem 1rem;
+    }
+
+    .recording-time {
+        font-size: 1.5rem;
+    }
+
+    .btn-record {
+        width: 64px;
+        height: 64px;
+    }
+
+    .modal {
+        padding: 1.5rem;
+    }
+
+    .note-card {
+        padding: 0.875rem 1rem;
+    }
+}
+
+/* ========== Scrollbar ========== */
+::-webkit-scrollbar {
+    width: 6px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: var(--color-border);
+    border-radius: 100px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-secondary);
+}
