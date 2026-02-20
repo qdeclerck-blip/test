@@ -408,14 +408,15 @@
 
         <!-- IMAGES Panel -->
         <div class="panel" id="panel-images">
-            <div class="card"><div class="card-header"><h3>Bibliothèque d'images</h3></div><div class="card-body">
-                <div class="upload-zone" id="uploadZone">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
-                    <p>Glissez-déposez vos images ici</p>
-                    <span>JPEG, PNG, WebP — max 10 MB</span>
-                    <input type="file" id="fileInput" accept="image/jpeg,image/png,image/webp,image/avif" multiple>
+            <div class="card"><div class="card-header"><h3>Gestion des images</h3></div><div class="card-body">
+                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Placez vos images dans le dossier <code>images/</code> à la racine du site. Utilisez ensuite le chemin relatif (ex : <code>images/photo.jpg</code>) dans les sections du contenu.</p>
+                <div class="field"><label>Ajouter un chemin d'image</label>
+                    <div style="display:flex;gap:.5rem;">
+                        <input type="text" id="newImagePath" placeholder="images/ma-photo.jpg" style="flex:1;">
+                        <button class="btn btn-primary btn-sm" id="addImageBtn">Ajouter</button>
+                    </div>
                 </div>
-                <div class="image-grid" id="imageGrid" style="margin-top:1.5rem;"></div>
+                <div class="image-grid" id="imageGrid" style="margin-top:1rem;"></div>
             </div></div>
         </div>
 
@@ -425,9 +426,16 @@
                 <div class="field"><label>Slogan</label><input type="text" data-path="footer.tagline"></div>
                 <button class="btn btn-primary save-section" data-section="footer">Enregistrer</button>
             </div></div>
+            <div class="card"><div class="card-header"><h3>Exporter tout le contenu</h3></div><div class="card-body">
+                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Collecte toutes les sections et télécharge le fichier <code>content.json</code> complet. Placez-le ensuite dans le dossier <code>data/</code> du site.</p>
+                <button class="btn btn-primary" id="exportAllBtn">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+                    Télécharger content.json
+                </button>
+            </div></div>
             <div class="card"><div class="card-header"><h3>Session</h3></div><div class="card-body">
-                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Vous êtes connecté via votre token GitHub. Le token est stocké uniquement dans la session de votre navigateur et sera supprimé à la fermeture de l'onglet.</p>
-                <button class="btn btn-danger" id="logoutBtn">Se déconnecter</button>
+                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Votre session reste active tant que l'onglet est ouvert.</p>
+                <button class="btn btn-danger" id="logoutBtn2">Se déconnecter</button>
             </div></div>
         </div>
 
@@ -441,14 +449,11 @@
 (function() {
     'use strict';
 
-    // --- GitHub API config ---
-    var GH_TOKEN = sessionStorage.getItem('gh_token');
-    var GH_REPO = sessionStorage.getItem('gh_repo') || 'qdeclerck-blip/test';
-    var GH_BRANCH = 'main'; // branch to commit to
-    var GH_API = 'https://api.github.com';
-    var contentSha = ''; // SHA of current content.json for updates
-
-    if (!GH_TOKEN) { window.location.href = 'login.html'; }
+    // --- Auth check ---
+    if (sessionStorage.getItem('admin_auth') !== 'true') {
+        window.location.href = 'login.html';
+        return;
+    }
 
     var content = {};
     var toastTimer;
@@ -461,40 +466,30 @@
         toastTimer = setTimeout(function() { el.classList.remove('visible'); }, 3500);
     }
 
-    function ghFetch(path, opts) {
-        opts = opts || {};
-        opts.headers = opts.headers || {};
-        opts.headers['Authorization'] = 'token ' + GH_TOKEN;
-        opts.headers['Accept'] = 'application/vnd.github.v3+json';
-        return fetch(GH_API + path, opts);
-    }
-
     function deepGet(obj, path) {
         return path.split('.').reduce(function(o, k) { return o != null ? o[k] : undefined; }, obj);
     }
     function deepSet(obj, path, val) {
         var keys = path.split('.'); var last = keys.pop();
-        keys.reduce(function(o, k) { return o[k]; }, obj)[last] = val;
+        var target = keys.reduce(function(o, k) {
+            if (o[k] === undefined) o[k] = {};
+            return o[k];
+        }, obj);
+        target[last] = val;
     }
 
-    // --- Load content from GitHub ---
+    // --- Load content from local file ---
     function loadContent() {
-        ghFetch('/repos/' + GH_REPO + '/contents/data/content.json?ref=' + GH_BRANCH)
+        fetch('../data/content.json')
             .then(function(r) { if (!r.ok) throw new Error('not found'); return r.json(); })
-            .then(function(file) {
-                contentSha = file.sha;
-                var decoded = atob(file.content.replace(/\n/g, ''));
-                // Handle UTF-8
-                var bytes = new Uint8Array(decoded.length);
-                for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
-                var text = new TextDecoder('utf-8').decode(bytes);
-                content = JSON.parse(text);
+            .then(function(data) {
+                content = data;
                 populateFields();
                 buildDynamicLists();
                 toast('Contenu chargé', 'success');
             })
             .catch(function(err) {
-                toast('Erreur: impossible de charger le contenu', 'error');
+                toast('Erreur: impossible de charger content.json', 'error');
                 console.error(err);
             });
     }
@@ -506,29 +501,18 @@
         });
     }
 
-    // --- Save content to GitHub via commit ---
-    function saveToGitHub(updatedContent) {
-        var jsonStr = JSON.stringify(updatedContent, null, 2);
-        var encoded = btoa(unescape(encodeURIComponent(jsonStr)));
-
-        return ghFetch('/repos/' + GH_REPO + '/contents/data/content.json', {
-            method: 'PUT',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                message: 'Update: contenu modifié via admin CMS',
-                content: encoded,
-                sha: contentSha,
-                branch: GH_BRANCH
-            })
-        })
-        .then(function(r) {
-            if (!r.ok) return r.json().then(function(d) { throw new Error(d.message || 'Erreur GitHub'); });
-            return r.json();
-        })
-        .then(function(res) {
-            contentSha = res.content.sha;
-            return true;
-        });
+    // --- Download content.json ---
+    function downloadJSON(data, filename) {
+        var jsonStr = JSON.stringify(data, null, 2);
+        var blob = new Blob([jsonStr], { type: 'application/json' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = filename || 'content.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
     }
 
     // --- Collect section data ---
@@ -584,6 +568,15 @@
         document.querySelectorAll('#galleryList .item-entry').forEach(function(e) {
             items.push({ caption: e.querySelector('[data-field="caption"]').value, wide: e.querySelector('[data-field="wide"]').checked });
         }); return items;
+    }
+
+    // --- Collect ALL sections ---
+    function collectAll() {
+        var sections = ['hero', 'concept', 'stats', 'maison', 'services', 'decouvrir', 'gallery', 'quote', 'seasons', 'contact', 'footer'];
+        sections.forEach(function(s) {
+            content[s] = collectSection(s);
+        });
+        return content;
     }
 
     // --- Build dynamic lists ---
@@ -643,24 +636,25 @@
 
     function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // --- Save section (commits to GitHub) ---
+    // --- Save section (update content object + download JSON) ---
     document.addEventListener('click', function(e) {
         if (!e.target.classList.contains('save-section')) return;
         var section = e.target.getAttribute('data-section');
         var data = collectSection(section);
-        e.target.disabled = true;
-        e.target.textContent = 'Sauvegarde...';
 
-        // Update content object then commit entire file
+        // Update in-memory content
         content[section] = data;
-        saveToGitHub(content).then(function() {
-            toast('Section "' + section + '" publiée sur le site !', 'success');
-        }).catch(function(err) {
-            toast('Erreur: ' + (err.message || 'échec de la sauvegarde'), 'error');
-        }).finally(function() {
-            e.target.disabled = false;
-            e.target.textContent = 'Enregistrer';
-        });
+
+        // Auto-download the updated content.json
+        downloadJSON(content, 'content.json');
+        toast('Section "' + section + '" sauvegardée ! Fichier téléchargé.', 'success');
+    });
+
+    // --- Export all button ---
+    document.getElementById('exportAllBtn').addEventListener('click', function() {
+        var allContent = collectAll();
+        downloadJSON(allContent, 'content.json');
+        toast('Fichier content.json complet téléchargé !', 'success');
     });
 
     // --- Navigation ---
@@ -689,99 +683,59 @@
     });
 
     // --- Logout ---
-    document.getElementById('logoutBtn').addEventListener('click', function() {
-        sessionStorage.removeItem('gh_token');
-        sessionStorage.removeItem('gh_repo');
+    function logout() {
+        sessionStorage.removeItem('admin_auth');
         window.location.href = 'login.html';
-    });
+    }
+    document.getElementById('logoutBtn').addEventListener('click', logout);
+    document.getElementById('logoutBtn2').addEventListener('click', logout);
 
-    // --- Image upload via GitHub API ---
-    var uploadZone = document.getElementById('uploadZone');
-    var fileInput = document.getElementById('fileInput');
+    // --- Image path management ---
+    var imagePaths = JSON.parse(localStorage.getItem('admin_images') || '[]');
 
-    uploadZone.addEventListener('click', function() { fileInput.click(); });
-    uploadZone.addEventListener('dragover', function(e) { e.preventDefault(); uploadZone.classList.add('dragover'); });
-    uploadZone.addEventListener('dragleave', function() { uploadZone.classList.remove('dragover'); });
-    uploadZone.addEventListener('drop', function(e) {
-        e.preventDefault(); uploadZone.classList.remove('dragover');
-        if (e.dataTransfer.files.length) uploadFiles(e.dataTransfer.files);
-    });
-    fileInput.addEventListener('change', function() { if (this.files.length) uploadFiles(this.files); });
-
-    function uploadFiles(files) {
-        Array.from(files).forEach(function(file) {
-            if (file.size > 10 * 1024 * 1024) { toast('Fichier trop volumineux (max 10 MB)', 'error'); return; }
-            toast('Upload en cours...', '');
-            var reader = new FileReader();
-            reader.onload = function() {
-                var base64 = reader.result.split(',')[1];
-                var safeName = Date.now() + '-' + file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
-                ghFetch('/repos/' + GH_REPO + '/contents/images/' + safeName, {
-                    method: 'PUT',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        message: 'Add: image ' + safeName,
-                        content: base64,
-                        branch: GH_BRANCH
-                    })
-                })
-                .then(function(r) { if (!r.ok) throw new Error('Upload échoué'); return r.json(); })
-                .then(function() { toast('Image "' + file.name + '" uploadée !', 'success'); loadImages(); })
-                .catch(function(err) { toast('Erreur upload: ' + err.message, 'error'); });
-            };
-            reader.readAsDataURL(file);
+    function renderImages() {
+        var grid = document.getElementById('imageGrid');
+        grid.innerHTML = '';
+        if (imagePaths.length === 0) {
+            grid.innerHTML = '<p style="color:var(--text-light);font-size:.85rem;">Aucune image référencée. Ajoutez un chemin ci-dessus.</p>';
+            return;
+        }
+        imagePaths.forEach(function(path, i) {
+            var card = document.createElement('div');
+            card.className = 'image-card';
+            card.innerHTML = '<img src="../' + esc(path) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' +
+                '<div class="image-actions"><button class="btn btn-danger btn-icon btn-sm" data-img-idx="' + i + '" title="Retirer">' +
+                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>' +
+                '<div class="image-name">' + esc(path) + '</div>';
+            card.querySelector('[data-img-idx]').addEventListener('click', function(e) {
+                e.stopPropagation();
+                imagePaths.splice(i, 1);
+                localStorage.setItem('admin_images', JSON.stringify(imagePaths));
+                renderImages();
+                toast('Image retirée de la liste', 'success');
+            });
+            card.addEventListener('click', function() {
+                navigator.clipboard.writeText(path).then(function() { toast('Chemin copié : ' + path, 'success'); });
+            });
+            grid.appendChild(card);
         });
     }
 
-    function loadImages() {
-        ghFetch('/repos/' + GH_REPO + '/contents/images?ref=' + GH_BRANCH)
-            .then(function(r) { if (!r.ok) throw new Error('no images'); return r.json(); })
-            .then(function(files) {
-                var grid = document.getElementById('imageGrid');
-                grid.innerHTML = '';
-                files.filter(function(f) { return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(f.name); })
-                    .forEach(function(img) {
-                        var card = document.createElement('div');
-                        card.className = 'image-card';
-                        var imgUrl = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + GH_BRANCH + '/images/' + img.name;
-                        card.innerHTML = '<img src="' + imgUrl + '" alt="" loading="lazy">' +
-                            '<div class="image-actions"><button class="btn btn-danger btn-icon btn-sm" data-delete="' + img.name + '" data-sha="' + img.sha + '" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button></div>' +
-                            '<div class="image-name">' + img.name + '</div>';
-                        card.addEventListener('click', function(e) {
-                            var delBtn = e.target.closest('[data-delete]');
-                            if (delBtn) {
-                                if (confirm('Supprimer ' + delBtn.getAttribute('data-delete') + ' ?')) {
-                                    ghFetch('/repos/' + GH_REPO + '/contents/images/' + delBtn.getAttribute('data-delete'), {
-                                        method: 'DELETE',
-                                        headers: { 'Content-Type': 'application/json' },
-                                        body: JSON.stringify({ message: 'Remove: image ' + delBtn.getAttribute('data-delete'), sha: delBtn.getAttribute('data-sha'), branch: GH_BRANCH })
-                                    }).then(function() { toast('Image supprimée', 'success'); loadImages(); });
-                                }
-                            } else {
-                                navigator.clipboard.writeText(imgUrl).then(function() { toast('URL copiée !', 'success'); });
-                            }
-                        });
-                        grid.appendChild(card);
-                    });
-            })
-            .catch(function() {
-                document.getElementById('imageGrid').innerHTML = '<p style="color:var(--text-light);font-size:.85rem;">Aucune image. Uploadez votre première image ci-dessus.</p>';
-            });
-    }
-
-    // --- Init ---
-    ghFetch('/user').then(function(r) {
-        if (!r.ok) throw new Error('auth');
-        return r.json();
-    }).then(function(user) {
-        document.getElementById('userInfo').textContent = user.login;
-    }).catch(function() {
-        sessionStorage.removeItem('gh_token');
-        window.location.href = 'login.html';
+    document.getElementById('addImageBtn').addEventListener('click', function() {
+        var input = document.getElementById('newImagePath');
+        var path = input.value.trim();
+        if (!path) return;
+        imagePaths.push(path);
+        localStorage.setItem('admin_images', JSON.stringify(imagePaths));
+        input.value = '';
+        renderImages();
+        toast('Image ajoutée', 'success');
     });
 
+    // --- Init ---
+    document.getElementById('userInfo').textContent = 'admin';
     loadContent();
-    loadImages();
+    renderImages();
 
 })();
 </script>

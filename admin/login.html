@@ -35,8 +35,6 @@
         .login-btn:disabled { opacity: 0.6; cursor: not-allowed; transform: none; }
         .error-msg { background: rgba(192,57,43,0.08); color: var(--danger); padding: 0.75rem 1rem; border-radius: 8px; font-size: 0.85rem; margin-bottom: 1rem; display: none; border: 1px solid rgba(192,57,43,0.15); }
         .error-msg.visible { display: block; }
-        .help-text { font-size: 0.75rem; color: var(--text-light); margin-top: 0.35rem; line-height: 1.5; }
-        .help-text a { color: var(--accent); text-decoration: underline; }
         .back-link { display: block; text-align: center; margin-top: 1.5rem; font-size: 0.8rem; color: var(--text-light); text-decoration: none; transition: color 0.3s; }
         .back-link:hover { color: var(--text); }
     </style>
@@ -51,12 +49,12 @@
             <div class="error-msg" id="errorMsg"></div>
             <form id="loginForm">
                 <div class="form-group">
-                    <label for="token">GitHub Personal Access Token</label>
-                    <input type="password" id="token" name="token" required autocomplete="off" placeholder="ghp_xxxxxxxxxxxx">
-                    <p class="help-text">
-                        Créez un token avec les droits <strong>repo</strong> dans
-                        <a href="https://github.com/settings/tokens/new?scopes=repo&description=Maison+Yvoir+Admin" target="_blank" rel="noopener">GitHub Settings &rarr; Tokens</a>.
-                    </p>
+                    <label for="username">Identifiant</label>
+                    <input type="text" id="username" name="username" required autocomplete="username" placeholder="admin">
+                </div>
+                <div class="form-group">
+                    <label for="password">Mot de passe</label>
+                    <input type="password" id="password" name="password" required autocomplete="current-password" placeholder="Mot de passe">
                 </div>
                 <button type="submit" class="login-btn" id="loginBtn">Se connecter</button>
             </form>
@@ -65,58 +63,44 @@
     </div>
     <script>
         (function() {
+            // Default credentials: admin / admin
+            // Password stored as SHA-256 hash for basic obfuscation
+            var VALID_USER = 'admin';
+            var VALID_HASH = '8c6976e5b5410415bde908bd4dee15dfb167a9c873fc4bb8a81f6f2ab448a918'; // SHA-256 of "admin"
+
             // Check if already authenticated
-            var existing = sessionStorage.getItem('gh_token');
-            if (existing) {
-                fetch('https://api.github.com/user', {
-                    headers: { 'Authorization': 'token ' + existing }
-                }).then(function(r) {
-                    if (r.ok) window.location.href = 'index.html';
-                    else sessionStorage.removeItem('gh_token');
-                });
+            if (sessionStorage.getItem('admin_auth') === 'true') {
+                window.location.href = 'index.html';
+                return;
+            }
+
+            async function sha256(str) {
+                var buf = new TextEncoder().encode(str);
+                var hash = await crypto.subtle.digest('SHA-256', buf);
+                return Array.from(new Uint8Array(hash)).map(function(b) {
+                    return b.toString(16).padStart(2, '0');
+                }).join('');
             }
 
             var form = document.getElementById('loginForm');
             var errorMsg = document.getElementById('errorMsg');
-            var loginBtn = document.getElementById('loginBtn');
 
-            form.addEventListener('submit', function(e) {
+            form.addEventListener('submit', async function(e) {
                 e.preventDefault();
                 errorMsg.classList.remove('visible');
-                loginBtn.disabled = true;
-                loginBtn.textContent = 'Vérification...';
 
-                var token = document.getElementById('token').value.trim();
+                var username = document.getElementById('username').value.trim();
+                var password = document.getElementById('password').value;
 
-                // Validate token by checking GitHub API + repo access
-                fetch('https://api.github.com/repos/qdeclerck-blip/test', {
-                    headers: { 'Authorization': 'token ' + token }
-                })
-                .then(function(r) {
-                    if (!r.ok) throw new Error('invalid');
-                    return r.json();
-                })
-                .then(function(repo) {
-                    if (!repo.permissions || !repo.permissions.push) {
-                        throw new Error('no_push');
-                    }
-                    // Token is valid and has push access
-                    sessionStorage.setItem('gh_token', token);
-                    sessionStorage.setItem('gh_repo', repo.full_name);
+                var passHash = await sha256(password);
+
+                if (username === VALID_USER && passHash === VALID_HASH) {
+                    sessionStorage.setItem('admin_auth', 'true');
                     window.location.href = 'index.html';
-                })
-                .catch(function(err) {
-                    if (err.message === 'no_push') {
-                        errorMsg.textContent = 'Ce token n\'a pas les droits d\'écriture sur le repo. Vérifiez les permissions (scope: repo).';
-                    } else {
-                        errorMsg.textContent = 'Token invalide ou accès refusé. Vérifiez votre token GitHub.';
-                    }
+                } else {
+                    errorMsg.textContent = 'Identifiant ou mot de passe incorrect.';
                     errorMsg.classList.add('visible');
-                })
-                .finally(function() {
-                    loginBtn.disabled = false;
-                    loginBtn.textContent = 'Se connecter';
-                });
+                }
             });
         })();
     </script>
