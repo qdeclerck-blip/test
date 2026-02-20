@@ -408,15 +408,11 @@
 
         <!-- IMAGES Panel -->
         <div class="panel" id="panel-images">
-            <div class="card"><div class="card-header"><h3>Gestion des images</h3></div><div class="card-body">
-                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Placez vos images dans le dossier <code>images/</code> à la racine du site. Utilisez ensuite le chemin relatif (ex : <code>images/photo.jpg</code>) dans les sections du contenu.</p>
-                <div class="field"><label>Ajouter un chemin d'image</label>
-                    <div style="display:flex;gap:.5rem;">
-                        <input type="text" id="newImagePath" placeholder="images/ma-photo.jpg" style="flex:1;">
-                        <button class="btn btn-primary btn-sm" id="addImageBtn">Ajouter</button>
-                    </div>
-                </div>
-                <div class="image-grid" id="imageGrid" style="margin-top:1rem;"></div>
+            <div class="card"><div class="card-header"><h3>Bibliothèque d'images</h3><button class="btn btn-primary btn-sm" id="addImageBtn">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                Ajouter une image</button></div><div class="card-body">
+                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Cliquez sur une image pour copier son chemin. Les images sont stockées dans le dossier <code>images/</code> du site.</p>
+                <div class="image-grid" id="imageGrid"></div>
             </div></div>
         </div>
 
@@ -426,12 +422,17 @@
                 <div class="field"><label>Slogan</label><input type="text" data-path="footer.tagline"></div>
                 <button class="btn btn-primary save-section" data-section="footer">Enregistrer</button>
             </div></div>
-            <div class="card"><div class="card-header"><h3>Exporter tout le contenu</h3></div><div class="card-body">
-                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Collecte toutes les sections et télécharge le fichier <code>content.json</code> complet. Placez-le ensuite dans le dossier <code>data/</code> du site.</p>
-                <button class="btn btn-primary" id="exportAllBtn">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="16" height="16"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-                    Télécharger content.json
-                </button>
+            <div class="card"><div class="card-header"><h3>Connexion GitHub</h3></div><div class="card-body">
+                <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Pour publier les modifications en direct sur le site, configurez votre token GitHub une seule fois. Il sera mémorisé dans votre navigateur.</p>
+                <div class="field">
+                    <label>GitHub Personal Access Token</label>
+                    <input type="password" id="ghTokenInput" placeholder="ghp_xxxxxxxxxxxx">
+                    <p class="field-hint">Créez un token avec les droits <strong>repo</strong> dans GitHub &rarr; Settings &rarr; Developer settings &rarr; Personal access tokens.</p>
+                </div>
+                <div style="display:flex;gap:.75rem;align-items:center;">
+                    <button class="btn btn-primary" id="saveTokenBtn">Sauvegarder le token</button>
+                    <span id="tokenStatus" style="font-size:.8rem;"></span>
+                </div>
             </div></div>
             <div class="card"><div class="card-header"><h3>Session</h3></div><div class="card-body">
                 <p style="font-size:.85rem;color:var(--text-light);margin-bottom:1rem;">Votre session reste active tant que l'onglet est ouvert.</p>
@@ -453,6 +454,24 @@
     if (sessionStorage.getItem('admin_auth') !== 'true') {
         window.location.href = 'login.html';
         return;
+    }
+
+    // --- GitHub config ---
+    var GH_REPO = 'qdeclerck-blip/test';
+    var GH_BRANCH = 'main';
+    var GH_API = 'https://api.github.com';
+    var contentSha = '';
+
+    function getToken() { return localStorage.getItem('gh_token') || ''; }
+
+    function ghFetch(path, opts) {
+        var token = getToken();
+        if (!token) return Promise.reject(new Error('no_token'));
+        opts = opts || {};
+        opts.headers = opts.headers || {};
+        opts.headers['Authorization'] = 'token ' + token;
+        opts.headers['Accept'] = 'application/vnd.github.v3+json';
+        return fetch(GH_API + path, opts);
     }
 
     var content = {};
@@ -478,18 +497,38 @@
         target[last] = val;
     }
 
-    // --- Load content from local file ---
+    // --- Load content from GitHub (live version) ---
     function loadContent() {
-        fetch('../data/content.json')
+        if (!getToken()) {
+            // Fallback: load from local file
+            fetch('../data/content.json')
+                .then(function(r) { if (!r.ok) throw new Error('not found'); return r.json(); })
+                .then(function(data) {
+                    content = data;
+                    populateFields();
+                    buildDynamicLists();
+                    toast('Contenu chargé (local). Configurez le token GitHub dans Paramètres pour publier.', 'warn');
+                })
+                .catch(function(err) {
+                    toast('Erreur: impossible de charger content.json', 'error');
+                    console.error(err);
+                });
+            return;
+        }
+        ghFetch('/repos/' + GH_REPO + '/contents/data/content.json?ref=' + GH_BRANCH)
             .then(function(r) { if (!r.ok) throw new Error('not found'); return r.json(); })
-            .then(function(data) {
-                content = data;
+            .then(function(file) {
+                contentSha = file.sha;
+                var decoded = atob(file.content.replace(/\n/g, ''));
+                var bytes = new Uint8Array(decoded.length);
+                for (var i = 0; i < decoded.length; i++) bytes[i] = decoded.charCodeAt(i);
+                content = JSON.parse(new TextDecoder('utf-8').decode(bytes));
                 populateFields();
                 buildDynamicLists();
-                toast('Contenu chargé', 'success');
+                toast('Contenu chargé depuis le site', 'success');
             })
             .catch(function(err) {
-                toast('Erreur: impossible de charger content.json', 'error');
+                toast('Erreur: impossible de charger le contenu', 'error');
                 console.error(err);
             });
     }
@@ -501,18 +540,30 @@
         });
     }
 
-    // --- Download content.json ---
-    function downloadJSON(data, filename) {
-        var jsonStr = JSON.stringify(data, null, 2);
-        var blob = new Blob([jsonStr], { type: 'application/json' });
-        var url = URL.createObjectURL(blob);
-        var a = document.createElement('a');
-        a.href = url;
-        a.download = filename || 'content.json';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
+    // --- Save content to GitHub via commit ---
+    function saveToGitHub(updatedContent) {
+        if (!getToken()) return Promise.reject(new Error('Aucun token GitHub configuré. Allez dans Paramètres pour le configurer.'));
+        var jsonStr = JSON.stringify(updatedContent, null, 2);
+        var encoded = btoa(unescape(encodeURIComponent(jsonStr)));
+
+        return ghFetch('/repos/' + GH_REPO + '/contents/data/content.json', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                message: 'Update: contenu modifié via admin CMS',
+                content: encoded,
+                sha: contentSha,
+                branch: GH_BRANCH
+            })
+        })
+        .then(function(r) {
+            if (!r.ok) return r.json().then(function(d) { throw new Error(d.message || 'Erreur GitHub'); });
+            return r.json();
+        })
+        .then(function(res) {
+            contentSha = res.content.sha;
+            return true;
+        });
     }
 
     // --- Collect section data ---
@@ -568,15 +619,6 @@
         document.querySelectorAll('#galleryList .item-entry').forEach(function(e) {
             items.push({ caption: e.querySelector('[data-field="caption"]').value, wide: e.querySelector('[data-field="wide"]').checked });
         }); return items;
-    }
-
-    // --- Collect ALL sections ---
-    function collectAll() {
-        var sections = ['hero', 'concept', 'stats', 'maison', 'services', 'decouvrir', 'gallery', 'quote', 'seasons', 'contact', 'footer'];
-        sections.forEach(function(s) {
-            content[s] = collectSection(s);
-        });
-        return content;
     }
 
     // --- Build dynamic lists ---
@@ -636,25 +678,24 @@
 
     function esc(s) { return String(s || '').replace(/&/g,'&amp;').replace(/"/g,'&quot;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
-    // --- Save section (update content object + download JSON) ---
+    // --- Save section (publish to GitHub) ---
     document.addEventListener('click', function(e) {
         if (!e.target.classList.contains('save-section')) return;
         var section = e.target.getAttribute('data-section');
         var data = collectSection(section);
+        var btn = e.target;
+        btn.disabled = true;
+        btn.textContent = 'Publication...';
 
-        // Update in-memory content
         content[section] = data;
-
-        // Auto-download the updated content.json
-        downloadJSON(content, 'content.json');
-        toast('Section "' + section + '" sauvegardée ! Fichier téléchargé.', 'success');
-    });
-
-    // --- Export all button ---
-    document.getElementById('exportAllBtn').addEventListener('click', function() {
-        var allContent = collectAll();
-        downloadJSON(allContent, 'content.json');
-        toast('Fichier content.json complet téléchargé !', 'success');
+        saveToGitHub(content).then(function() {
+            toast('Section "' + section + '" publiée en ligne !', 'success');
+        }).catch(function(err) {
+            toast('Erreur: ' + (err.message || 'échec de la publication'), 'error');
+        }).finally(function() {
+            btn.disabled = false;
+            btn.textContent = 'Enregistrer';
+        });
     });
 
     // --- Navigation ---
@@ -690,52 +731,127 @@
     document.getElementById('logoutBtn').addEventListener('click', logout);
     document.getElementById('logoutBtn2').addEventListener('click', logout);
 
-    // --- Image path management ---
-    var imagePaths = JSON.parse(localStorage.getItem('admin_images') || '[]');
+    // --- GitHub token config ---
+    var tokenInput = document.getElementById('ghTokenInput');
+    var tokenStatus = document.getElementById('tokenStatus');
 
-    function renderImages() {
-        var grid = document.getElementById('imageGrid');
-        grid.innerHTML = '';
-        if (imagePaths.length === 0) {
-            grid.innerHTML = '<p style="color:var(--text-light);font-size:.85rem;">Aucune image référencée. Ajoutez un chemin ci-dessus.</p>';
-            return;
+    function updateTokenStatus() {
+        var token = getToken();
+        if (token) {
+            tokenInput.value = token;
+            tokenStatus.textContent = 'Connecté';
+            tokenStatus.style.color = 'var(--success)';
+        } else {
+            tokenStatus.textContent = 'Non configuré';
+            tokenStatus.style.color = 'var(--danger)';
         }
-        imagePaths.forEach(function(path, i) {
-            var card = document.createElement('div');
-            card.className = 'image-card';
-            card.innerHTML = '<img src="../' + esc(path) + '" alt="" loading="lazy" onerror="this.style.display=\'none\'">' +
-                '<div class="image-actions"><button class="btn btn-danger btn-icon btn-sm" data-img-idx="' + i + '" title="Retirer">' +
-                '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M18 6L6 18M6 6l12 12"/></svg></button></div>' +
-                '<div class="image-name">' + esc(path) + '</div>';
-            card.querySelector('[data-img-idx]').addEventListener('click', function(e) {
-                e.stopPropagation();
-                imagePaths.splice(i, 1);
-                localStorage.setItem('admin_images', JSON.stringify(imagePaths));
-                renderImages();
-                toast('Image retirée de la liste', 'success');
-            });
-            card.addEventListener('click', function() {
-                navigator.clipboard.writeText(path).then(function() { toast('Chemin copié : ' + path, 'success'); });
-            });
-            grid.appendChild(card);
-        });
     }
 
-    document.getElementById('addImageBtn').addEventListener('click', function() {
-        var input = document.getElementById('newImagePath');
-        var path = input.value.trim();
-        if (!path) return;
-        imagePaths.push(path);
-        localStorage.setItem('admin_images', JSON.stringify(imagePaths));
-        input.value = '';
-        renderImages();
-        toast('Image ajoutée', 'success');
+    document.getElementById('saveTokenBtn').addEventListener('click', function() {
+        var token = tokenInput.value.trim();
+        if (!token) { toast('Veuillez entrer un token', 'error'); return; }
+        tokenStatus.textContent = 'Vérification...';
+        tokenStatus.style.color = 'var(--text-light)';
+
+        fetch(GH_API + '/repos/' + GH_REPO, {
+            headers: { 'Authorization': 'token ' + token, 'Accept': 'application/vnd.github.v3+json' }
+        })
+        .then(function(r) { if (!r.ok) throw new Error('invalid'); return r.json(); })
+        .then(function(repo) {
+            if (!repo.permissions || !repo.permissions.push) throw new Error('no_push');
+            localStorage.setItem('gh_token', token);
+            toast('Token sauvegardé ! Les modifications seront publiées en direct.', 'success');
+            updateTokenStatus();
+            loadContent(); // Reload from GitHub
+        })
+        .catch(function(err) {
+            if (err.message === 'no_push') {
+                toast('Ce token n\'a pas les droits d\'écriture. Vérifiez les permissions (scope: repo).', 'error');
+            } else {
+                toast('Token invalide ou accès refusé.', 'error');
+            }
+            tokenStatus.textContent = 'Erreur';
+            tokenStatus.style.color = 'var(--danger)';
+        });
+    });
+
+    // --- Image upload via GitHub API ---
+    var addImageBtn = document.getElementById('addImageBtn');
+    var imageGrid = document.getElementById('imageGrid');
+
+    function loadImages() {
+        if (!getToken()) {
+            imageGrid.innerHTML = '<p style="color:var(--text-light);font-size:.85rem;">Configurez le token GitHub dans Paramètres pour gérer les images.</p>';
+            return;
+        }
+        ghFetch('/repos/' + GH_REPO + '/contents/images?ref=' + GH_BRANCH)
+            .then(function(r) { if (!r.ok) throw new Error('no images'); return r.json(); })
+            .then(function(files) {
+                imageGrid.innerHTML = '';
+                files.filter(function(f) { return /\.(jpg|jpeg|png|webp|avif|gif)$/i.test(f.name); })
+                    .forEach(function(img) {
+                        var card = document.createElement('div');
+                        card.className = 'image-card';
+                        var imgUrl = 'https://raw.githubusercontent.com/' + GH_REPO + '/' + GH_BRANCH + '/images/' + img.name;
+                        card.innerHTML = '<img src="' + imgUrl + '" alt="" loading="lazy">' +
+                            '<div class="image-actions"><button class="btn btn-danger btn-icon btn-sm" data-delete="' + img.name + '" data-sha="' + img.sha + '" title="Supprimer"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" width="14" height="14"><path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg></button></div>' +
+                            '<div class="image-name">' + img.name + '</div>';
+                        card.addEventListener('click', function(e) {
+                            var delBtn = e.target.closest('[data-delete]');
+                            if (delBtn) {
+                                if (confirm('Supprimer ' + delBtn.getAttribute('data-delete') + ' ?')) {
+                                    ghFetch('/repos/' + GH_REPO + '/contents/images/' + delBtn.getAttribute('data-delete'), {
+                                        method: 'DELETE',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({ message: 'Remove: image ' + delBtn.getAttribute('data-delete'), sha: delBtn.getAttribute('data-sha'), branch: GH_BRANCH })
+                                    }).then(function() { toast('Image supprimée', 'success'); loadImages(); });
+                                }
+                            } else {
+                                navigator.clipboard.writeText('images/' + img.name).then(function() { toast('Chemin copié : images/' + img.name, 'success'); });
+                            }
+                        });
+                        imageGrid.appendChild(card);
+                    });
+            })
+            .catch(function() {
+                imageGrid.innerHTML = '<p style="color:var(--text-light);font-size:.85rem;">Aucune image dans le dossier images/.</p>';
+            });
+    }
+
+    // Upload image from path input (file selected via hidden input)
+    addImageBtn.addEventListener('click', function() {
+        var fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.accept = 'image/jpeg,image/png,image/webp,image/avif';
+        fileInput.addEventListener('change', function() {
+            if (!fileInput.files.length) return;
+            var file = fileInput.files[0];
+            if (file.size > 10 * 1024 * 1024) { toast('Fichier trop volumineux (max 10 MB)', 'error'); return; }
+            if (!getToken()) { toast('Configurez le token GitHub dans Paramètres d\'abord.', 'error'); return; }
+            toast('Upload en cours...', '');
+            var reader = new FileReader();
+            reader.onload = function() {
+                var base64 = reader.result.split(',')[1];
+                var safeName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+                ghFetch('/repos/' + GH_REPO + '/contents/images/' + safeName, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ message: 'Add: image ' + safeName, content: base64, branch: GH_BRANCH })
+                })
+                .then(function(r) { if (!r.ok) throw new Error('Upload échoué'); return r.json(); })
+                .then(function() { toast('Image "' + file.name + '" uploadée !', 'success'); loadImages(); })
+                .catch(function(err) { toast('Erreur upload: ' + err.message, 'error'); });
+            };
+            reader.readAsDataURL(file);
+        });
+        fileInput.click();
     });
 
     // --- Init ---
     document.getElementById('userInfo').textContent = 'admin';
+    updateTokenStatus();
     loadContent();
-    renderImages();
+    loadImages();
 
 })();
 </script>
