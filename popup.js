@@ -20,10 +20,10 @@ document.addEventListener("DOMContentLoaded", () => {
   document.getElementById("btn-compare").addEventListener("click", openCompareModal);
   document.getElementById("btn-export").addEventListener("click", exportCSV);
   document.getElementById("modal-close").addEventListener("click", () => {
-    document.getElementById("compare-modal").hidden = true;
+    document.getElementById("compare-modal").classList.remove("visible");
   });
   document.getElementById("edit-modal-close").addEventListener("click", () => {
-    document.getElementById("edit-modal").hidden = true;
+    document.getElementById("edit-modal").classList.remove("visible");
   });
 });
 
@@ -233,7 +233,7 @@ function openCompareModal() {
   html += "</tbody>";
   table.innerHTML = html;
 
-  document.getElementById("compare-modal").hidden = false;
+  document.getElementById("compare-modal").classList.add("visible");
 }
 
 // --- Edit modal ---
@@ -296,12 +296,12 @@ function openEditModal(id) {
 
     recompute(prop);
     saveProperties(() => {
-      document.getElementById("edit-modal").hidden = true;
+      document.getElementById("edit-modal").classList.remove("visible");
       renderBoard();
     });
   });
 
-  document.getElementById("edit-modal").hidden = false;
+  document.getElementById("edit-modal").classList.add("visible");
 }
 
 function recompute(prop) {
