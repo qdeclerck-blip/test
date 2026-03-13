@@ -118,6 +118,7 @@
 
 .it-sidebar-body input[type="text"],
 .it-sidebar-body input[type="number"],
+.it-sidebar-body input[type="datetime-local"],
 .it-sidebar-body textarea,
 .it-sidebar-body select {
   display: block;
@@ -187,6 +188,27 @@
   font-size: 14px;
   padding: 0;
   line-height: 1;
+}
+
+/* Scenario sections */
+.it-scenario-section {
+  background: #eef1f6;
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 16px;
+}
+
+.it-results-opti {
+  border-left: 3px solid #2ecc71;
+}
+
+.it-results-pessi {
+  border-left: 3px solid #e74c3c;
+}
+
+/* Visit date */
+.it-visit-date-label {
+  margin-top: 10px;
 }
 
 /* Results */

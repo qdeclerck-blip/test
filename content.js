@@ -84,10 +84,24 @@
     });
   }
 
+  // --- Normalize URL for matching (strip query/hash) ---
+  function normalizeUrl(url) {
+    try {
+      const u = new URL(url);
+      return u.origin + u.pathname.replace(/\/+$/, "");
+    } catch (e) {
+      return url;
+    }
+  }
+
+  // --- State ---
+  let existingProperty = null; // set if this URL was already saved
+  let tags = [];
+  let currentScore = 0;
+
   // --- Floating button ---
   const fab = document.createElement("button");
   fab.id = "immotracker-fab";
-  fab.innerHTML = "&#x1F4BE; Sauvegarder ce bien";
   document.body.appendChild(fab);
 
   // --- Sidebar ---
@@ -100,14 +114,33 @@
   sidebar.innerHTML = buildSidebarHTML();
   document.body.appendChild(sidebar);
 
-  let currentData = null;
+  // Check if property already exists on load
+  chrome.storage.local.get({ immotracker_properties: [] }, (result) => {
+    const currentUrl = normalizeUrl(window.location.href);
+    existingProperty = result.immotracker_properties.find(
+      (p) => normalizeUrl(p.url) === currentUrl
+    ) || null;
+    updateFabLabel();
+  });
+
+  function updateFabLabel() {
+    if (existingProperty) {
+      fab.innerHTML = "&#x270F;&#xFE0F; Modifier mon analyse";
+    } else {
+      fab.innerHTML = "&#x1F4BE; Sauvegarder ce bien";
+    }
+  }
 
   fab.addEventListener("click", openSidebar);
   overlay.addEventListener("click", closeSidebar);
 
   function openSidebar() {
-    currentData = scrapeProperty();
-    populateForm(currentData);
+    if (existingProperty) {
+      populateFromExisting(existingProperty);
+    } else {
+      const scraped = scrapeProperty();
+      populateForm(scraped);
+    }
     sidebar.classList.add("open");
     overlay.classList.add("open");
     recalculate();
@@ -133,9 +166,57 @@
     getEl("it-charges").value = "";
     getEl("it-notary").value = "";
     getEl("it-renovation").value = "";
+    // Optimistic
+    getEl("it-rent-opti").value = "";
+    getEl("it-charges-opti").value = "";
+    getEl("it-renovation-opti").value = "";
+    // Pessimistic
+    getEl("it-rent-pessi").value = "";
+    getEl("it-charges-pessi").value = "";
+    getEl("it-renovation-pessi").value = "";
     getEl("it-status").value = "À étudier";
+    getEl("it-visit-date").value = "";
     setScore(0);
     tags = [];
+    getEl("it-save").textContent = "Sauvegarder";
+  }
+
+  function populateFromExisting(prop) {
+    getEl("it-title").value = prop.title || "";
+    getEl("it-price").value = prop.price || 0;
+    getEl("it-surface").value = prop.surface || 0;
+    getEl("it-rooms").value = prop.rooms || 0;
+    getEl("it-address").value = prop.address || "";
+    getEl("it-url").value = prop.url || "";
+    getEl("it-imageUrl").value = prop.imageUrl || "";
+    getEl("it-notes").value = prop.notes || "";
+    getEl("it-tags-input").value = "";
+
+    const calc = prop.calculator || {};
+    getEl("it-rent").value = calc.monthlyRent || "";
+    getEl("it-charges").value = calc.monthlyCharges || "";
+    getEl("it-notary").value = calc.notaryFees || "";
+    getEl("it-renovation").value = calc.renovationCost || "";
+
+    // Optimistic
+    const opti = prop.calculatorOptimistic || {};
+    getEl("it-rent-opti").value = opti.monthlyRent || "";
+    getEl("it-charges-opti").value = opti.monthlyCharges || "";
+    getEl("it-renovation-opti").value = opti.renovationCost || "";
+
+    // Pessimistic
+    const pessi = prop.calculatorPessimistic || {};
+    getEl("it-rent-pessi").value = pessi.monthlyRent || "";
+    getEl("it-charges-pessi").value = pessi.monthlyCharges || "";
+    getEl("it-renovation-pessi").value = pessi.renovationCost || "";
+
+    getEl("it-status").value = prop.status || "À étudier";
+    getEl("it-visit-date").value = prop.visitDate || "";
+
+    tags = prop.tags ? [...prop.tags] : [];
+    renderTags();
+    setScore(prop.score || 0);
+    getEl("it-save").textContent = "Mettre à jour";
   }
 
   function getEl(id) {
@@ -143,8 +224,6 @@
   }
 
   // --- Tags ---
-  let tags = [];
-
   function addTag(text) {
     text = text.trim().replace(/^#*/, "");
     if (!text || tags.includes(text)) return;
@@ -173,8 +252,6 @@
   }
 
   // --- Score ---
-  let currentScore = 0;
-
   function setScore(n) {
     currentScore = n;
     const stars = sidebar.querySelectorAll(".it-star");
@@ -184,19 +261,10 @@
   }
 
   // --- Calculator ---
-  function recalculate() {
-    const price = parseFloat(getEl("it-price").value) || 0;
-    const rent = parseFloat(getEl("it-rent").value) || 0;
-    const charges = parseFloat(getEl("it-charges").value) || 0;
-    const notary = parseFloat(getEl("it-notary").value) || 0;
-    const renovation = parseFloat(getEl("it-renovation").value) || 0;
-    const surface = parseFloat(getEl("it-surface").value) || 0;
-
+  function computeScenario(price, rent, charges, notary, renovation, surface) {
     const totalAcquisition = price + notary + renovation;
     const grossYield = price > 0 ? ((rent * 12) / price) * 100 : 0;
     const netYield = totalAcquisition > 0 ? (((rent - charges) * 12) / totalAcquisition) * 100 : 0;
-
-    // Mortgage: 80% of total over 25 years at 3.5%
     const loanAmount = totalAcquisition * 0.8;
     const monthlyRate = 0.035 / 12;
     const n = 25 * 12;
@@ -206,15 +274,59 @@
     }
     const cashflow = rent - charges - monthlyPayment;
     const pricePerSqm = surface > 0 ? price / surface : 0;
+    return { totalAcquisition, grossYield, netYield, cashflow, pricePerSqm };
+  }
 
-    getEl("it-total-acquisition").textContent = formatEur(totalAcquisition);
-    getEl("it-gross-yield").textContent = grossYield.toFixed(2) + " %";
-    getEl("it-net-yield").textContent = netYield.toFixed(2) + " %";
-    getEl("it-cashflow").textContent = formatEur(cashflow);
-    getEl("it-price-sqm").textContent = surface > 0 ? formatEur(pricePerSqm) : "—";
+  function recalculate() {
+    const price = parseFloat(getEl("it-price").value) || 0;
+    const rent = parseFloat(getEl("it-rent").value) || 0;
+    const charges = parseFloat(getEl("it-charges").value) || 0;
+    const notary = parseFloat(getEl("it-notary").value) || 0;
+    const renovation = parseFloat(getEl("it-renovation").value) || 0;
+    const surface = parseFloat(getEl("it-surface").value) || 0;
 
-    const cfEl = getEl("it-cashflow");
-    cfEl.className = "it-result-value " + (cashflow >= 0 ? "positive" : "negative");
+    // Base scenario
+    const base = computeScenario(price, rent, charges, notary, renovation, surface);
+    getEl("it-total-acquisition").textContent = formatEur(base.totalAcquisition);
+    getEl("it-gross-yield").textContent = base.grossYield.toFixed(2) + " %";
+    getEl("it-net-yield").textContent = base.netYield.toFixed(2) + " %";
+    getEl("it-cashflow").textContent = formatEur(base.cashflow);
+    getEl("it-cashflow").className = "it-result-value " + (base.cashflow >= 0 ? "positive" : "negative");
+    getEl("it-price-sqm").textContent = surface > 0 ? formatEur(base.pricePerSqm) : "—";
+
+    // Optimistic scenario
+    const rentO = parseFloat(getEl("it-rent-opti").value) || 0;
+    const chargesO = parseFloat(getEl("it-charges-opti").value) || 0;
+    const renovationO = parseFloat(getEl("it-renovation-opti").value) || 0;
+    if (rentO || chargesO || renovationO) {
+      const opti = computeScenario(price, rentO, chargesO, notary, renovationO, surface);
+      getEl("it-gross-yield-opti").textContent = opti.grossYield.toFixed(2) + " %";
+      getEl("it-net-yield-opti").textContent = opti.netYield.toFixed(2) + " %";
+      getEl("it-cashflow-opti").textContent = formatEur(opti.cashflow);
+      getEl("it-cashflow-opti").className = "it-result-value " + (opti.cashflow >= 0 ? "positive" : "negative");
+    } else {
+      getEl("it-gross-yield-opti").textContent = "—";
+      getEl("it-net-yield-opti").textContent = "—";
+      getEl("it-cashflow-opti").textContent = "—";
+      getEl("it-cashflow-opti").className = "it-result-value";
+    }
+
+    // Pessimistic scenario
+    const rentP = parseFloat(getEl("it-rent-pessi").value) || 0;
+    const chargesP = parseFloat(getEl("it-charges-pessi").value) || 0;
+    const renovationP = parseFloat(getEl("it-renovation-pessi").value) || 0;
+    if (rentP || chargesP || renovationP) {
+      const pessi = computeScenario(price, rentP, chargesP, notary, renovationP, surface);
+      getEl("it-gross-yield-pessi").textContent = pessi.grossYield.toFixed(2) + " %";
+      getEl("it-net-yield-pessi").textContent = pessi.netYield.toFixed(2) + " %";
+      getEl("it-cashflow-pessi").textContent = formatEur(pessi.cashflow);
+      getEl("it-cashflow-pessi").className = "it-result-value " + (pessi.cashflow >= 0 ? "positive" : "negative");
+    } else {
+      getEl("it-gross-yield-pessi").textContent = "—";
+      getEl("it-net-yield-pessi").textContent = "—";
+      getEl("it-cashflow-pessi").textContent = "—";
+      getEl("it-cashflow-pessi").className = "it-result-value";
+    }
   }
 
   function formatEur(v) {
@@ -224,7 +336,7 @@
   // --- Save ---
   function saveProperty() {
     const property = {
-      id: generateUUID(),
+      id: existingProperty ? existingProperty.id : generateUUID(),
       title: getEl("it-title").value,
       price: parseFloat(getEl("it-price").value) || 0,
       surface: parseFloat(getEl("it-surface").value) || 0,
@@ -232,36 +344,59 @@
       address: getEl("it-address").value,
       url: getEl("it-url").value,
       imageUrl: getEl("it-imageUrl").value,
-      savedAt: new Date().toISOString(),
+      savedAt: existingProperty ? existingProperty.savedAt : new Date().toISOString(),
       notes: getEl("it-notes").value,
       tags: [...tags],
       status: getEl("it-status").value,
       score: currentScore,
+      visitDate: getEl("it-visit-date").value || "",
       calculator: {
         monthlyRent: parseFloat(getEl("it-rent").value) || 0,
         monthlyCharges: parseFloat(getEl("it-charges").value) || 0,
         notaryFees: parseFloat(getEl("it-notary").value) || 0,
         renovationCost: parseFloat(getEl("it-renovation").value) || 0,
       },
-      computed: {
-        totalAcquisitionPrice: 0,
-        grossYield: 0,
-        netYield: 0,
-        monthlyCashflow: 0,
-        pricePerSqm: 0,
+      calculatorOptimistic: {
+        monthlyRent: parseFloat(getEl("it-rent-opti").value) || 0,
+        monthlyCharges: parseFloat(getEl("it-charges-opti").value) || 0,
+        renovationCost: parseFloat(getEl("it-renovation-opti").value) || 0,
       },
+      calculatorPessimistic: {
+        monthlyRent: parseFloat(getEl("it-rent-pessi").value) || 0,
+        monthlyCharges: parseFloat(getEl("it-charges-pessi").value) || 0,
+        renovationCost: parseFloat(getEl("it-renovation-pessi").value) || 0,
+      },
+      computed: { totalAcquisitionPrice: 0, grossYield: 0, netYield: 0, monthlyCashflow: 0, pricePerSqm: 0 },
+      computedOptimistic: { grossYield: 0, netYield: 0, monthlyCashflow: 0 },
+      computedPessimistic: { grossYield: 0, netYield: 0, monthlyCashflow: 0 },
     };
 
-    // Recompute for storage
-    const p = property.price;
-    const r = property.calculator.monthlyRent;
-    const c = property.calculator.monthlyCharges;
-    const nf = property.calculator.notaryFees;
-    const rv = property.calculator.renovationCost;
-    const total = p + nf + rv;
-    property.computed.totalAcquisitionPrice = total;
-    property.computed.grossYield = p > 0 ? ((r * 12) / p) * 100 : 0;
-    property.computed.netYield = total > 0 ? (((r - c) * 12) / total) * 100 : 0;
+    // Recompute base
+    recomputeProperty(property);
+
+    chrome.storage.local.get({ immotracker_properties: [] }, (result) => {
+      let list = result.immotracker_properties;
+      if (existingProperty) {
+        list = list.map((p) => (p.id === existingProperty.id ? property : p));
+      } else {
+        list.push(property);
+      }
+      chrome.storage.local.set({ immotracker_properties: list }, () => {
+        existingProperty = property;
+        updateFabLabel();
+        showToast(existingProperty ? "Analyse mise à jour !" : "Bien sauvegardé !");
+        closeSidebar();
+      });
+    });
+  }
+
+  function recomputeProperty(prop) {
+    const p = prop.price;
+    const calc = prop.calculator;
+    const total = p + calc.notaryFees + calc.renovationCost;
+    prop.computed.totalAcquisitionPrice = total;
+    prop.computed.grossYield = p > 0 ? ((calc.monthlyRent * 12) / p) * 100 : 0;
+    prop.computed.netYield = total > 0 ? (((calc.monthlyRent - calc.monthlyCharges) * 12) / total) * 100 : 0;
     const loanAmount = total * 0.8;
     const mRate = 0.035 / 12;
     const months = 25 * 12;
@@ -269,17 +404,26 @@
     if (loanAmount > 0) {
       mp = (loanAmount * mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1);
     }
-    property.computed.monthlyCashflow = r - c - mp;
-    property.computed.pricePerSqm = property.surface > 0 ? p / property.surface : 0;
+    prop.computed.monthlyCashflow = calc.monthlyRent - calc.monthlyCharges - mp;
+    prop.computed.pricePerSqm = prop.surface > 0 ? p / prop.surface : 0;
 
-    chrome.storage.local.get({ immotracker_properties: [] }, (result) => {
-      const list = result.immotracker_properties;
-      list.push(property);
-      chrome.storage.local.set({ immotracker_properties: list }, () => {
-        showToast("Bien sauvegardé !");
-        closeSidebar();
-      });
-    });
+    // Optimistic
+    const o = prop.calculatorOptimistic;
+    const totalO = p + calc.notaryFees + (o.renovationCost || calc.renovationCost);
+    prop.computedOptimistic.grossYield = p > 0 ? (((o.monthlyRent || 0) * 12) / p) * 100 : 0;
+    prop.computedOptimistic.netYield = totalO > 0 ? ((((o.monthlyRent || 0) - (o.monthlyCharges || 0)) * 12) / totalO) * 100 : 0;
+    let loanO = totalO * 0.8;
+    let mpO = loanO > 0 ? (loanO * mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1) : 0;
+    prop.computedOptimistic.monthlyCashflow = (o.monthlyRent || 0) - (o.monthlyCharges || 0) - mpO;
+
+    // Pessimistic
+    const pe = prop.calculatorPessimistic;
+    const totalP = p + calc.notaryFees + (pe.renovationCost || calc.renovationCost);
+    prop.computedPessimistic.grossYield = p > 0 ? (((pe.monthlyRent || 0) * 12) / p) * 100 : 0;
+    prop.computedPessimistic.netYield = totalP > 0 ? ((((pe.monthlyRent || 0) - (pe.monthlyCharges || 0)) * 12) / totalP) * 100 : 0;
+    let loanP = totalP * 0.8;
+    let mpP = loanP > 0 ? (loanP * mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1) : 0;
+    prop.computedPessimistic.monthlyCashflow = (pe.monthlyRent || 0) - (pe.monthlyCharges || 0) - mpP;
   }
 
   function showToast(msg) {
@@ -324,7 +468,7 @@
         </section>
 
         <section class="it-section">
-          <h3>Calculateur de rentabilité</h3>
+          <h3>Analyse de base</h3>
           <label>Loyer mensuel estimé (€)<input type="number" id="it-rent" min="0"></label>
           <label>Charges mensuelles (€)<input type="number" id="it-charges" min="0"></label>
           <label>Frais de notaire (€)<input type="number" id="it-notary" min="0"></label>
@@ -335,6 +479,30 @@
             <div class="it-result-row"><span>Rendement net</span><span id="it-net-yield" class="it-result-value">—</span></div>
             <div class="it-result-row"><span>Cash-flow mensuel</span><span id="it-cashflow" class="it-result-value">—</span></div>
             <div class="it-result-row"><span>Prix / m²</span><span id="it-price-sqm" class="it-result-value">—</span></div>
+          </div>
+        </section>
+
+        <section class="it-section it-scenario-section">
+          <h3>&#x1F31E; Scénario optimiste</h3>
+          <label>Loyer (€)<input type="number" id="it-rent-opti" min="0" placeholder="Loyer optimiste"></label>
+          <label>Charges (€)<input type="number" id="it-charges-opti" min="0" placeholder="Charges optimistes"></label>
+          <label>Travaux (€)<input type="number" id="it-renovation-opti" min="0" placeholder="Travaux optimistes"></label>
+          <div class="it-results it-results-opti">
+            <div class="it-result-row"><span>Rendement brut</span><span id="it-gross-yield-opti" class="it-result-value">—</span></div>
+            <div class="it-result-row"><span>Rendement net</span><span id="it-net-yield-opti" class="it-result-value">—</span></div>
+            <div class="it-result-row"><span>Cash-flow mensuel</span><span id="it-cashflow-opti" class="it-result-value">—</span></div>
+          </div>
+        </section>
+
+        <section class="it-section it-scenario-section">
+          <h3>&#x1F327;&#xFE0F; Scénario pessimiste</h3>
+          <label>Loyer (€)<input type="number" id="it-rent-pessi" min="0" placeholder="Loyer pessimiste"></label>
+          <label>Charges (€)<input type="number" id="it-charges-pessi" min="0" placeholder="Charges pessimistes"></label>
+          <label>Travaux (€)<input type="number" id="it-renovation-pessi" min="0" placeholder="Travaux pessimistes"></label>
+          <div class="it-results it-results-pessi">
+            <div class="it-result-row"><span>Rendement brut</span><span id="it-gross-yield-pessi" class="it-result-value">—</span></div>
+            <div class="it-result-row"><span>Rendement net</span><span id="it-net-yield-pessi" class="it-result-value">—</span></div>
+            <div class="it-result-row"><span>Cash-flow mensuel</span><span id="it-cashflow-pessi" class="it-result-value">—</span></div>
           </div>
         </section>
 
@@ -349,6 +517,7 @@
             <option>Acquis</option>
             <option>Abandonné</option>
           </select>
+          <label class="it-visit-date-label">Date de visite<input type="datetime-local" id="it-visit-date"></label>
         </section>
 
         <section class="it-section">
@@ -389,7 +558,11 @@
   });
 
   // Recalculate on input changes
-  ["it-price", "it-surface", "it-rent", "it-charges", "it-notary", "it-renovation"].forEach((id) => {
+  [
+    "it-price", "it-surface", "it-rent", "it-charges", "it-notary", "it-renovation",
+    "it-rent-opti", "it-charges-opti", "it-renovation-opti",
+    "it-rent-pessi", "it-charges-pessi", "it-renovation-pessi",
+  ].forEach((id) => {
     sidebar.querySelector("#" + id).addEventListener("input", recalculate);
   });
 })();

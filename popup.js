@@ -123,12 +123,22 @@ function createCard(prop) {
     imageHtml = '<div class="card-image-placeholder">🏠</div>';
   }
 
+  // Visit date badge for "Visite planifiée"
+  let visitBadgeHtml = "";
+  if (prop.status === "Visite planifiée" && prop.visitDate) {
+    const vd = new Date(prop.visitDate);
+    const visitStr = vd.toLocaleDateString("fr-BE", { day: "numeric", month: "short" })
+      + " " + vd.toLocaleTimeString("fr-BE", { hour: "2-digit", minute: "2-digit" });
+    visitBadgeHtml = `<div class="card-visit-date">&#x1F4C5; ${visitStr}</div>`;
+  }
+
   card.innerHTML = `
     <input type="checkbox" class="card-checkbox" ${isChecked} data-id="${escapeAttr(prop.id)}">
     ${imageHtml}
     <div class="card-body">
       <div class="card-price">${formatEur(prop.price)}</div>
       <div class="card-address" title="${escapeAttr(prop.address)}">${escapeHtml(prop.address || "Adresse non renseignée")}</div>
+      ${visitBadgeHtml}
       <div class="card-meta">
         <span class="card-stars">${starsHtml}</span>
         <span class="card-yield ${yieldClass}">${grossYield.toFixed(1)}%</span>
@@ -182,7 +192,6 @@ function formatEur(v) {
 function toggleSelect(id, checked) {
   if (checked) {
     if (selectedIds.size >= 3) {
-      // Uncheck - too many
       const card = document.querySelector(`.card-checkbox[data-id="${id}"]`);
       if (card) card.checked = false;
       return;
@@ -217,6 +226,10 @@ function openCompareModal() {
     ["Rendement brut", ...selected.map((p) => (p.computed ? p.computed.grossYield.toFixed(2) + " %" : "—"))],
     ["Rendement net", ...selected.map((p) => (p.computed ? p.computed.netYield.toFixed(2) + " %" : "—"))],
     ["Cash-flow", ...selected.map((p) => (p.computed ? formatEur(p.computed.monthlyCashflow) : "—"))],
+    ["Rdt brut optimiste", ...selected.map((p) => (p.computedOptimistic ? p.computedOptimistic.grossYield.toFixed(2) + " %" : "—"))],
+    ["Cash-flow optimiste", ...selected.map((p) => (p.computedOptimistic ? formatEur(p.computedOptimistic.monthlyCashflow) : "—"))],
+    ["Rdt brut pessimiste", ...selected.map((p) => (p.computedPessimistic ? p.computedPessimistic.grossYield.toFixed(2) + " %" : "—"))],
+    ["Cash-flow pessimiste", ...selected.map((p) => (p.computedPessimistic ? formatEur(p.computedPessimistic.monthlyCashflow) : "—"))],
     ["Score", ...selected.map((p) => renderStars(p.score))],
     ["Statut", ...selected.map((p) => p.status)],
     ["Notes", ...selected.map((p) => escapeHtml(p.notes || "—"))],
@@ -241,6 +254,10 @@ function openEditModal(id) {
   const prop = properties.find((p) => p.id === id);
   if (!prop) return;
 
+  const calc = prop.calculator || {};
+  const opti = prop.calculatorOptimistic || {};
+  const pessi = prop.calculatorPessimistic || {};
+
   const body = document.getElementById("edit-modal-body");
   body.innerHTML = `
     <div class="edit-form">
@@ -250,15 +267,31 @@ function openEditModal(id) {
       <label>Chambres<input type="number" id="edit-rooms" value="${prop.rooms}" min="0"></label>
       <label>Adresse<input type="text" id="edit-address" value="${escapeAttr(prop.address)}"></label>
       <label>Notes<textarea id="edit-notes" rows="2">${escapeHtml(prop.notes || "")}</textarea></label>
-      <label>Loyer estimé (€)<input type="number" id="edit-rent" value="${prop.calculator ? prop.calculator.monthlyRent : 0}" min="0"></label>
-      <label>Charges (€)<input type="number" id="edit-charges" value="${prop.calculator ? prop.calculator.monthlyCharges : 0}" min="0"></label>
-      <label>Frais notaire (€)<input type="number" id="edit-notary" value="${prop.calculator ? prop.calculator.notaryFees : 0}" min="0"></label>
-      <label>Travaux (€)<input type="number" id="edit-renovation" value="${prop.calculator ? prop.calculator.renovationCost : 0}" min="0"></label>
+
+      <h4 class="edit-section-title">Analyse de base</h4>
+      <label>Loyer estimé (€)<input type="number" id="edit-rent" value="${calc.monthlyRent || 0}" min="0"></label>
+      <label>Charges (€)<input type="number" id="edit-charges" value="${calc.monthlyCharges || 0}" min="0"></label>
+      <label>Frais notaire (€)<input type="number" id="edit-notary" value="${calc.notaryFees || 0}" min="0"></label>
+      <label>Travaux (€)<input type="number" id="edit-renovation" value="${calc.renovationCost || 0}" min="0"></label>
+
+      <h4 class="edit-section-title">&#x1F31E; Scénario optimiste</h4>
+      <label>Loyer (€)<input type="number" id="edit-rent-opti" value="${opti.monthlyRent || 0}" min="0"></label>
+      <label>Charges (€)<input type="number" id="edit-charges-opti" value="${opti.monthlyCharges || 0}" min="0"></label>
+      <label>Travaux (€)<input type="number" id="edit-renovation-opti" value="${opti.renovationCost || 0}" min="0"></label>
+
+      <h4 class="edit-section-title">&#x1F327;&#xFE0F; Scénario pessimiste</h4>
+      <label>Loyer (€)<input type="number" id="edit-rent-pessi" value="${pessi.monthlyRent || 0}" min="0"></label>
+      <label>Charges (€)<input type="number" id="edit-charges-pessi" value="${pessi.monthlyCharges || 0}" min="0"></label>
+      <label>Travaux (€)<input type="number" id="edit-renovation-pessi" value="${pessi.renovationCost || 0}" min="0"></label>
+
+      <h4 class="edit-section-title">Pipeline</h4>
       <label>Statut
         <select id="edit-status">
           ${STATUSES.map((s) => `<option ${s === prop.status ? "selected" : ""}>${s}</option>`).join("")}
         </select>
       </label>
+      <label>Date de visite<input type="datetime-local" id="edit-visit-date" value="${escapeAttr(prop.visitDate || "")}"></label>
+
       <label>Score</label>
       <div class="edit-stars" id="edit-stars">
         ${[1, 2, 3, 4, 5].map((i) => `<span class="edit-star ${i <= prop.score ? "active" : ""}" data-v="${i}">★</span>`).join("")}
@@ -287,12 +320,23 @@ function openEditModal(id) {
     prop.notes = body.querySelector("#edit-notes").value;
     prop.status = body.querySelector("#edit-status").value;
     prop.score = editScore;
+    prop.visitDate = body.querySelector("#edit-visit-date").value || "";
 
     if (!prop.calculator) prop.calculator = {};
     prop.calculator.monthlyRent = parseFloat(body.querySelector("#edit-rent").value) || 0;
     prop.calculator.monthlyCharges = parseFloat(body.querySelector("#edit-charges").value) || 0;
     prop.calculator.notaryFees = parseFloat(body.querySelector("#edit-notary").value) || 0;
     prop.calculator.renovationCost = parseFloat(body.querySelector("#edit-renovation").value) || 0;
+
+    if (!prop.calculatorOptimistic) prop.calculatorOptimistic = {};
+    prop.calculatorOptimistic.monthlyRent = parseFloat(body.querySelector("#edit-rent-opti").value) || 0;
+    prop.calculatorOptimistic.monthlyCharges = parseFloat(body.querySelector("#edit-charges-opti").value) || 0;
+    prop.calculatorOptimistic.renovationCost = parseFloat(body.querySelector("#edit-renovation-opti").value) || 0;
+
+    if (!prop.calculatorPessimistic) prop.calculatorPessimistic = {};
+    prop.calculatorPessimistic.monthlyRent = parseFloat(body.querySelector("#edit-rent-pessi").value) || 0;
+    prop.calculatorPessimistic.monthlyCharges = parseFloat(body.querySelector("#edit-charges-pessi").value) || 0;
+    prop.calculatorPessimistic.renovationCost = parseFloat(body.querySelector("#edit-renovation-pessi").value) || 0;
 
     recompute(prop);
     saveProperties(() => {
@@ -306,27 +350,48 @@ function openEditModal(id) {
 
 function recompute(prop) {
   const p = prop.price;
-  const r = prop.calculator.monthlyRent;
-  const c = prop.calculator.monthlyCharges;
-  const nf = prop.calculator.notaryFees;
-  const rv = prop.calculator.renovationCost;
+  const calc = prop.calculator || {};
+  const r = calc.monthlyRent || 0;
+  const c = calc.monthlyCharges || 0;
+  const nf = calc.notaryFees || 0;
+  const rv = calc.renovationCost || 0;
   const total = p + nf + rv;
 
   if (!prop.computed) prop.computed = {};
-
   prop.computed.totalAcquisitionPrice = total;
   prop.computed.grossYield = p > 0 ? ((r * 12) / p) * 100 : 0;
   prop.computed.netYield = total > 0 ? (((r - c) * 12) / total) * 100 : 0;
 
-  const loanAmount = total * 0.8;
   const mRate = 0.035 / 12;
   const months = 25 * 12;
+
+  const loanAmount = total * 0.8;
   let mp = 0;
   if (loanAmount > 0) {
     mp = (loanAmount * mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1);
   }
   prop.computed.monthlyCashflow = r - c - mp;
   prop.computed.pricePerSqm = prop.surface > 0 ? p / prop.surface : 0;
+
+  // Optimistic
+  const o = prop.calculatorOptimistic || {};
+  if (!prop.computedOptimistic) prop.computedOptimistic = {};
+  const totalO = p + nf + (o.renovationCost || rv);
+  prop.computedOptimistic.grossYield = p > 0 ? (((o.monthlyRent || 0) * 12) / p) * 100 : 0;
+  prop.computedOptimistic.netYield = totalO > 0 ? ((((o.monthlyRent || 0) - (o.monthlyCharges || 0)) * 12) / totalO) * 100 : 0;
+  const loanO = totalO * 0.8;
+  const mpO = loanO > 0 ? (loanO * mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1) : 0;
+  prop.computedOptimistic.monthlyCashflow = (o.monthlyRent || 0) - (o.monthlyCharges || 0) - mpO;
+
+  // Pessimistic
+  const pe = prop.calculatorPessimistic || {};
+  if (!prop.computedPessimistic) prop.computedPessimistic = {};
+  const totalP = p + nf + (pe.renovationCost || rv);
+  prop.computedPessimistic.grossYield = p > 0 ? (((pe.monthlyRent || 0) * 12) / p) * 100 : 0;
+  prop.computedPessimistic.netYield = totalP > 0 ? ((((pe.monthlyRent || 0) - (pe.monthlyCharges || 0)) * 12) / totalP) * 100 : 0;
+  const loanP = totalP * 0.8;
+  const mpP = loanP > 0 ? (loanP * mRate * Math.pow(1 + mRate, months)) / (Math.pow(1 + mRate, months) - 1) : 0;
+  prop.computedPessimistic.monthlyCashflow = (pe.monthlyRent || 0) - (pe.monthlyCharges || 0) - mpP;
 }
 
 // --- CSV Export ---
@@ -335,34 +400,37 @@ function exportCSV() {
 
   const headers = [
     "Titre", "Prix", "Surface", "Chambres", "Adresse", "URL", "Date",
-    "Notes", "Tags", "Statut", "Score",
+    "Notes", "Tags", "Statut", "Score", "Date de visite",
     "Loyer", "Charges", "Frais notaire", "Travaux",
     "Prix total acquisition", "Rendement brut (%)", "Rendement net (%)",
     "Cash-flow mensuel", "Prix/m²",
+    "Loyer optimiste", "Charges optimiste", "Travaux optimiste",
+    "Rdt brut optimiste (%)", "Rdt net optimiste (%)", "Cash-flow optimiste",
+    "Loyer pessimiste", "Charges pessimiste", "Travaux pessimiste",
+    "Rdt brut pessimiste (%)", "Rdt net pessimiste (%)", "Cash-flow pessimiste",
   ];
 
-  const rows = properties.map((p) => [
-    csvSafe(p.title),
-    p.price,
-    p.surface,
-    p.rooms,
-    csvSafe(p.address),
-    csvSafe(p.url),
-    p.savedAt,
-    csvSafe(p.notes),
-    csvSafe((p.tags || []).join(", ")),
-    csvSafe(p.status),
-    p.score,
-    p.calculator ? p.calculator.monthlyRent : 0,
-    p.calculator ? p.calculator.monthlyCharges : 0,
-    p.calculator ? p.calculator.notaryFees : 0,
-    p.calculator ? p.calculator.renovationCost : 0,
-    p.computed ? p.computed.totalAcquisitionPrice : 0,
-    p.computed ? p.computed.grossYield.toFixed(2) : 0,
-    p.computed ? p.computed.netYield.toFixed(2) : 0,
-    p.computed ? p.computed.monthlyCashflow.toFixed(2) : 0,
-    p.computed ? p.computed.pricePerSqm.toFixed(2) : 0,
-  ]);
+  const rows = properties.map((p) => {
+    const calc = p.calculator || {};
+    const comp = p.computed || {};
+    const opti = p.calculatorOptimistic || {};
+    const compO = p.computedOptimistic || {};
+    const pessi = p.calculatorPessimistic || {};
+    const compP = p.computedPessimistic || {};
+    return [
+      csvSafe(p.title), p.price, p.surface, p.rooms,
+      csvSafe(p.address), csvSafe(p.url), p.savedAt,
+      csvSafe(p.notes), csvSafe((p.tags || []).join(", ")),
+      csvSafe(p.status), p.score, csvSafe(p.visitDate || ""),
+      calc.monthlyRent || 0, calc.monthlyCharges || 0, calc.notaryFees || 0, calc.renovationCost || 0,
+      comp.totalAcquisitionPrice || 0, (comp.grossYield || 0).toFixed(2), (comp.netYield || 0).toFixed(2),
+      (comp.monthlyCashflow || 0).toFixed(2), (comp.pricePerSqm || 0).toFixed(2),
+      opti.monthlyRent || 0, opti.monthlyCharges || 0, opti.renovationCost || 0,
+      (compO.grossYield || 0).toFixed(2), (compO.netYield || 0).toFixed(2), (compO.monthlyCashflow || 0).toFixed(2),
+      pessi.monthlyRent || 0, pessi.monthlyCharges || 0, pessi.renovationCost || 0,
+      (compP.grossYield || 0).toFixed(2), (compP.netYield || 0).toFixed(2), (compP.monthlyCashflow || 0).toFixed(2),
+    ];
+  });
 
   let csv = "\uFEFF"; // BOM for Excel
   csv += headers.join(";") + "\n";
